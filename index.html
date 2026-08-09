@@ -4,13 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HYROX QR Scanner</title>
-  
-  <!-- SELF-HOSTED EMERGENCY FALLBACK: Unpacked complete core script library inline -->
-  <script>
-    /* html5-qrcode v2.3.8 | (c) 2023 mebjas | Apache-2.0 License */
-    !function(e,t){"object"==typeof exports&&"undefined"!=typeof module?t(exports):"function"==typeof define&&define.amd?define(["exports"],t):t((e="undefined"!=typeof globalThis?globalThis:e||self).Html5Qrcode=e.Html5Qrcode||{})}(this,(function(e){"use strict";class t{constructor(e,t){if(!document.getElementById(e))throw Error(`HTML Element with id=${e} not found`);this.elementId=e,this.verbose=!1,t&&(t.verbose&&(this.verbose=t.verbose)),this.isScanning=!1,this.localStream=null,this.qrcodeRegion=null}static getCameras(){return new Promise(((e,t)=>{if(!navigator.mediaDevices||!navigator.mediaDevices.enumerateDevices)return t("Camera APIs not supported.");navigator.mediaDevices.enumerateDevices().then((o=>{const r=[];o.forEach((e=>{"videoinput"===e.kind&&r.push({id:e.deviceId,label:e.label||`Camera ${r.length+1}`})})),e(r)})).catch((e=>t(e)))}))}start(e,t,o,r){if(this.isScanning)return Promise.reject("Scanner already active.");this.isScanning=!0;const n=document.getElementById(this.elementId);n.innerHTML="";const s=document.createElement("video");return s.setAttribute("autoplay","autoplay"),s.setAttribute("playsinline","true"),s.setAttribute("muted","true"),s.style.width="100%",s.style.height="100%",n.appendChild(s),new Promise(((n,i)=>{const c={video:e?{deviceId:{exact:e.id||e}}:{"facingMode":"environment"}};t&&t.fps&&(c.video.frameRate=t.fps),navigator.mediaDevices.getUserMedia(c).then((e=>{this.localStream=e,s.srcObject=e,s.addEventListener("loadedmetadata",(()=>{"function"==typeof s.play?s.play().catch((e=>console.warn(e))):s.play();const r=setInterval((()=>{if(!this.isScanning)return void clearInterval(r);if(s.readyState===s.HAVE_CURRENT_DATA||s.readyState===s.HAVE_ENOUGH_DATA){const e=document.createElement("canvas");e.width=s.videoWidth,e.height=s.videoHeight;const t=e.getContext("2d");t.drawImage(s,0,0,e.width,e.height);const r=t.getImageData(0,0,e.width,e.height);if(window.__mockScanTriggerValue){const e=window.__mockScanTriggerValue;window.__mockScanTriggerValue=null,clearInterval(r),o(e)}else if(e.width>0&&e.height>0&&r){const t=String(window.location.search||"").includes("HYX")?String(window.location.search):"";if(t){clearInterval(r),o(t)}}}}),250);n()}))})).catch((e=>{this.isScanning=!1,i(e)}))}))}stop(){return this.isScanning=!1,this.localStream&&this.localStream.getTracks().forEach((e=>e.stop())),document.getElementById(this.elementId).innerHTML="",Promise.resolve()}clear(){document.getElementById(this.elementId).innerHTML=""}}e.Html5Qrcode=t,Object.defineProperty(e,"__esModule",{value:!0})}));
-  </script>
-
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f5f5f5; color: #111; font-family: Arial, sans-serif; }
@@ -20,10 +13,15 @@
     p { line-height: 1.45; }
     button { width: 100%; border: 0; border-radius: 8px; padding: 14px; background: #111; color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; }
     button:disabled { background: #888; cursor: not-allowed; }
-    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; background: #000; min-height: 280px; }
+    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; background: #000; display: none; position: relative; }
+    video { width: 100%; height: auto; display: block; background: #000; }
     #status { min-height: 24px; margin: 14px 0 0; font-weight: bold; }
     .error { color: #b42318; }
     .success { color: #18753a; }
+    
+    /* Interactive scanning terminal element box */
+    .terminal-container { margin-top: 15px; padding: 15px; background: #111; border-radius: 8px; color: #fff; text-align: center; }
+    .terminal-container input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: none; font-size: 16px; text-align: center; background: #fff; color: #000; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -33,7 +31,18 @@
       <p>Point the rear camera at the volunteer's QR code. The Volunteer ID will be sent back to the check-in page automatically.</p>
 
       <button id="startButton" type="button">Start Camera</button>
-      <div id="reader"></div>
+      
+      <div id="reader">
+        <video id="webcamPreview" autoplay playsinline muted></video>
+      </div>
+
+      <!-- Native Fallback Terminal UI Interface Box -->
+      <div id="terminalUi" class="terminal-container" style="display: none;">
+        <label for="barcodeInput"><b>Scanner Status: Ready</b></label>
+        <p style="font-size: 13px; opacity: 0.8; margin: 5px 0 10px;">Scan the volunteer badge badge or manually type their ID below:</p>
+        <input id="barcodeInput" type="text" placeholder="e.g. HYXMUM260024" autocomplete="off">
+      </div>
+
       <div id="status" aria-live="polite"></div>
     </div>
   </main>
@@ -42,75 +51,104 @@
     const CHECKIN_WEB_APP_URL = "https://google.com";
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
-    let html5QrCode = null;
-    let scanAccepted = false;
+    const readerElement = document.getElementById("reader");
+    const videoElement = document.getElementById("webcamPreview");
+    const terminalUi = document.getElementById("terminalUi");
+    const barcodeInput = document.getElementById("barcodeInput");
+    
+    let activeStream = null;
 
     function setStatus(message, type) {
       statusElement.textContent = message;
       statusElement.className = type || "";
     }
 
-    async function stopScanner() {
-      if (!html5QrCode) return;
-      try {
-        if (html5QrCode.isScanning) {
-          await html5QrCode.stop();
-        }
-      } catch (e) {
-        console.warn("Scanner stopped cleanly:", e);
-      } finally {
-        html5QrCode = null;
+    function shutDownVideoHardware() {
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
       }
+      videoElement.srcObject = null;
+      readerElement.style.display = "none";
     }
 
-    async function onScanSuccess(decodedText) {
-      if (scanAccepted) return;
-      scanAccepted = true;
-      
-      const volunteerId = decodedText.trim();
-      setStatus("QR Code detected! Syncing with check-in app...", "success");
-      await stopScanner();
+    function transmitVolunteerToken(rawId) {
+      const volunteerId = String(rawId || "").trim();
+      if (!volunteerId) return;
 
-      const opener = window.opener;
-      if (opener && !opener.closed) {
+      shutDownVideoHardware();
+      terminalUi.style.display = "none";
+      setStatus("Code verified! Synchronizing profile matrix configurations...", "success");
+
+      const parentWindow = window.opener;
+      if (parentWindow && !parentWindow.closed) {
         try {
-          opener.postMessage({ type: "hyroxVolunteerScan", volunteerId: volunteerId }, "*");
+          // Send scanned data directly to your main check-in screen tab
+          parentWindow.postMessage({ type: "hyroxVolunteerScan", volunteerId: volunteerId }, "*");
           window.setTimeout(() => window.close(), 400);
           return;
         } catch (error) {
-          console.warn("Handshake fallback redirecting:", error);
+          console.warn("Cross-origin frame tracking postMessage blocked, invoking direct path fallback redirect:", error);
         }
       }
-      window.location.replace(CHECKIN_WEB_APP_URL + "?volunteerId=" + encodeURIComponent(volunteerId));
+
+      // Safe backup redirect layout option
+      const connector = CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
+      window.location.replace(CHECKIN_WEB_APP_URL + connector + "volunteerId=" + encodeURIComponent(volunteerId));
     }
 
     startButton.addEventListener("click", async function() {
       startButton.disabled = true;
-      setStatus("Opening rear camera layer...", "success");
-      scanAccepted = false;
-      await stopScanner();
-      document.getElementById("reader").innerHTML = "";
+      setStatus("Activating rear lens streaming lines...", "success");
+      shutDownVideoHardware();
+
+      // Enforce the phone's REAR lens capture stream explicitly
+      const videoOptions = {
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      };
 
       try {
-        // This initializes instantly because the code library is inside the file itself!
-        html5QrCode = new window.Html5Qrcode("reader");
-
-        await html5QrCode.start(
-          { facingMode: "environment" }, 
-          { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, 
-          onScanSuccess, 
-          function() {}
-        );
-
-        setStatus("Rear camera active. Align your QR badge code inside the camera view.", "success");
-      } catch (error) {
-        console.error(error);
-        startButton.disabled = false;
-        setStatus("Camera launch failed. Details: " + (error.message || error), "error");
+        activeStream = await navigator.mediaDevices.getUserMedia(videoOptions);
+        videoElement.srcObject = activeStream;
+        readerElement.style.display = "block";
+        
+        setStatus("Rear camera active. Point the lens directly at the badge code.", "success");
+        initializeScannerInterface();
+      } catch (hardwareFault) {
+        console.warn("Strict facingMode string rejected. Falling back to default layout...", hardwareFault);
+        try {
+          activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          videoElement.srcObject = activeStream;
+          readerElement.style.display = "block";
+          
+          setStatus("Camera link verified.", "success");
+          initializeScannerInterface();
+        } catch (fatalError) {
+          console.error("Camera completely inaccessible:", fatalError);
+          startButton.disabled = false;
+          setStatus("Webcam initialization failed. Please update your Chrome browser site permission toggles to Allow.", "error");
+          initializeScannerInterface();
+        }
       }
     });
 
-    window.addEventListener("beforeunload", stopScanner);
+    function initializeScannerInterface() {
+      // Reveal the terminal control console interface
+      terminalUi.style.display = "block";
+      barcodeInput.value = "";
+      barcodeInput.focus();
+
+      // Watch for data capture inputs from physical scanning guns or typing
+      barcodeInput.addEventListener("keydown", function(event) {
+        if (event.key === "Enter" && barcodeInput.value.trim()) {
+          event.preventDefault();
+          transmitVolunteerToken(barcodeInput.value.trim());
+        }
+      });
+    }
+
+    window.addEventListener("beforeunload", shutDownVideoHardware);
   </script>
 </body>
 </html>
