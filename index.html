@@ -106,8 +106,20 @@
       });
 
       try {
+        // iPhone browsers are more reliable when the physical rear-camera
+        // ID is selected explicitly instead of using facingMode alone.
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (!cameras || cameras.length === 0) {
+          throw new Error("No camera was found on this device.");
+        }
+
+        const rearCamera = cameras.find(camera =>
+          /(back|rear|environment)/i.test(camera.label)
+        ) || cameras[cameras.length - 1];
+
         await scanner.start(
-          { facingMode: "environment" },
+          rearCamera.id,
           { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
           onScanSuccess,
           function() {}
@@ -116,7 +128,11 @@
       } catch (error) {
         console.error("Camera start failed", error);
         startButton.disabled = false;
-        setStatus("Unable to open the camera. Allow camera access and try again.", "error");
+        setStatus(
+          "Unable to open the camera. In iPhone Settings, allow Camera for Chrome, then try again. Details: " +
+          (error.message || error),
+          "error"
+        );
       }
     });
 
