@@ -10,10 +10,16 @@
     content="width=device-width, initial-scale=1"
   >
 
-  <title>HYROX Volunteer QR Scanner</title>
+  <title>
+    HYROX QR Scanner
+  </title>
+
 
   <!-- jsQR -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+  ></script>
+
 
   <style>
 
@@ -21,101 +27,175 @@
       box-sizing: border-box;
     }
 
+
     body {
+
       margin: 0;
+
       background: #f5f5f5;
+
       color: #111;
-      font-family: Arial, sans-serif;
+
+      font-family:
+        Arial,
+        sans-serif;
     }
+
 
     main {
+
       max-width: 480px;
+
       margin: 0 auto;
-      padding: 24px 18px;
+
+      padding:
+        24px 18px;
     }
+
 
     .card {
+
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.08);
-      padding: 20px;
-    }
 
-    h1 {
-      font-size: 23px;
-      margin: 0 0 10px;
-    }
-
-    p {
-      line-height: 1.45;
-    }
-
-    button {
-      width: 100%;
-      border: 0;
-      border-radius: 8px;
-      padding: 14px;
-      background: #111;
-      color: #fff;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-    }
-
-    button:disabled {
-      background: #888;
-      cursor: not-allowed;
-    }
-
-    #reader {
-      margin-top: 18px;
-      overflow: hidden;
-      border-radius: 8px;
-      background: #000;
-      display: none;
-      position: relative;
-    }
-
-    video {
-      width: 100%;
-      height: auto;
-      display: block;
-      background: #000;
-    }
-
-    #status {
-      min-height: 24px;
-      margin: 14px 0 0;
-      font-weight: bold;
-    }
-
-    .error {
-      color: #b42318;
-    }
-
-    .success {
-      color: #18753a;
-    }
-
-    .scan-region-highlight {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-
-      width: 220px;
-      height: 220px;
-
-      border: 4px solid #1c8c3a;
       border-radius: 12px;
 
       box-shadow:
-        0 0 0 2000px rgba(0, 0, 0, 0.5);
+        0 2px 8px
+        rgba(0, 0, 0, .08);
+
+      padding: 20px;
+    }
+
+
+    h1 {
+
+      font-size: 23px;
+
+      margin:
+        0 0 10px;
+    }
+
+
+    p {
+
+      line-height: 1.45;
+    }
+
+
+    button {
+
+      width: 100%;
+
+      border: 0;
+
+      border-radius: 8px;
+
+      padding: 14px;
+
+      background: #111;
+
+      color: #fff;
+
+      cursor: pointer;
+
+      font-size: 16px;
+
+      font-weight: bold;
+    }
+
+
+    button:disabled {
+
+      background: #888;
+
+      cursor: not-allowed;
+    }
+
+
+    #reader {
+
+      margin-top: 18px;
+
+      overflow: hidden;
+
+      border-radius: 8px;
+
+      background: #000;
+
+      display: none;
+
+      position: relative;
+    }
+
+
+    video {
+
+      width: 100%;
+
+      height: auto;
+
+      display: block;
+
+      background: #000;
+    }
+
+
+    #status {
+
+      min-height: 24px;
+
+      margin:
+        14px 0 0;
+
+      font-weight: bold;
+    }
+
+
+    .error {
+
+      color: #b42318;
+    }
+
+
+    .success {
+
+      color: #18753a;
+    }
+
+
+    .scan-region-highlight {
+
+      position: absolute;
+
+      left: 50%;
+
+      top: 50%;
+
+      transform:
+        translate(
+          -50%,
+          -50%
+        );
+
+      width: 220px;
+
+      height: 220px;
+
+      border:
+        4px solid #1c8c3a;
+
+      border-radius: 12px;
+
+      box-shadow:
+        0 0 0 2000px
+        rgba(0, 0, 0, 0.5);
 
       pointer-events: none;
     }
 
+
     #scanCanvas {
+
       display: none;
     }
 
@@ -130,13 +210,17 @@
 
     <div class="card">
 
-      <h1>HYROX Volunteer QR Scan</h1>
+      <h1>
+        HYROX Volunteer QR Scan
+      </h1>
+
 
       <p>
         Point the rear camera at the volunteer's QR code.
-        The Volunteer ID will automatically be sent back
-        to the check-in screen.
+        The Volunteer ID will be sent back to the check-in
+        page automatically.
       </p>
+
 
       <button
         id="startButton"
@@ -144,6 +228,7 @@
       >
         Start Camera
       </button>
+
 
       <div id="reader">
 
@@ -154,11 +239,18 @@
           muted
         ></video>
 
-        <div class="scan-region-highlight"></div>
+
+        <div
+          class="scan-region-highlight"
+        ></div>
 
       </div>
 
-      <canvas id="scanCanvas"></canvas>
+
+      <canvas
+        id="scanCanvas"
+      ></canvas>
+
 
       <div
         id="status"
@@ -173,62 +265,82 @@
   <script>
 
     // ============================================================
-    // CONFIGURATION
-    // ============================================================
-
-    const CHECKIN_WEB_APP_URL =
-      "https://script.google.com/macros/s/AKfycbxPtX-lbjUGHdxMpBu5LoGN1nlAgdXedBdYxyyIGtdZ8OMxwi4rLd_IMmqUd7V369o/exec";
-
-
-    // ============================================================
     // DOM
     // ============================================================
 
     const statusElement =
-      document.getElementById("status");
+      document.getElementById(
+        "status"
+      );
+
 
     const startButton =
-      document.getElementById("startButton");
+      document.getElementById(
+        "startButton"
+      );
+
 
     const readerElement =
-      document.getElementById("reader");
+      document.getElementById(
+        "reader"
+      );
+
 
     const videoElement =
-      document.getElementById("webcamPreview");
+      document.getElementById(
+        "webcamPreview"
+      );
+
 
     const canvasElement =
-      document.getElementById("scanCanvas");
+      document.getElementById(
+        "scanCanvas"
+      );
+
 
     const canvasContext =
-      canvasElement.getContext("2d", {
-        willReadFrequently: true
-      });
+      canvasElement.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
 
 
     // ============================================================
     // STATE
     // ============================================================
 
-    let activeStream = null;
+    let activeStream =
+      null;
 
-    let scanInterval = null;
 
-    let scanAccepted = false;
+    let scanInterval =
+      null;
 
-    let nativeDetector = null;
+
+    let scanAccepted =
+      false;
+
+
+    let nativeDetector =
+      null;
 
 
     // ============================================================
     // STATUS
     // ============================================================
 
-    function setStatus(message, type) {
+    function setStatus(
+      message,
+      type
+    ) {
 
-      statusElement.textContent = message;
+      statusElement.textContent =
+        message;
 
       statusElement.className =
         type || "";
-
     }
 
 
@@ -240,68 +352,68 @@
 
       if (scanInterval) {
 
-        clearInterval(scanInterval);
+        clearInterval(
+          scanInterval
+        );
 
-        scanInterval = null;
-
+        scanInterval =
+          null;
       }
+
 
       if (activeStream) {
 
         activeStream
           .getTracks()
-          .forEach(function(track) {
-            track.stop();
-          });
+          .forEach(
+            track =>
+              track.stop()
+          );
 
-        activeStream = null;
-
+        activeStream =
+          null;
       }
 
-      videoElement.srcObject = null;
 
-      readerElement.style.display = "none";
+      videoElement.srcObject =
+        null;
 
+
+      readerElement.style.display =
+        "none";
     }
 
 
     // ============================================================
-    // SEND SCANNED VOLUNTEER ID
-    // ============================================================
-    //
-    // IMPORTANT:
-    // We now ALWAYS use returnUrl.
-    //
-    // This avoids the unreliable popup postMessage flow.
-    //
-    // Result:
-    //
-    // Scanner
-    //    ↓
-    // QR = HYXMUM260010
-    //    ↓
-    // CHECKIN_URL?volunteerId=HYXMUM260010
-    //    ↓
-    // Apps Script check-in page
-    //
+    // SEND QR RESULT
     // ============================================================
 
-    function transmitVolunteerToken(rawId) {
+    function transmitVolunteerToken(
+      rawId
+    ) {
 
       if (scanAccepted) {
         return;
       }
 
+
       const volunteerId =
-        String(rawId || "").trim();
+        String(
+          rawId || ""
+        ).trim();
+
 
       if (!volunteerId) {
         return;
       }
 
-      scanAccepted = true;
+
+      scanAccepted =
+        true;
+
 
       shutDownVideoHardware();
+
 
       setStatus(
         "QR Code detected! Returning to check-in...",
@@ -310,7 +422,7 @@
 
 
       // ----------------------------------------------------------
-      // Get return URL from scanner URL if provided.
+      // Get Event Day that was passed from check-in page
       // ----------------------------------------------------------
 
       const scannerParams =
@@ -318,37 +430,11 @@
           window.location.search
         );
 
-      let returnUrl =
-        scannerParams.get("returnUrl");
 
-
-      // ----------------------------------------------------------
-      // If no returnUrl was supplied, use the configured
-      // check-in web app URL.
-      // ----------------------------------------------------------
-
-      if (!returnUrl) {
-
-        returnUrl =
-          CHECKIN_WEB_APP_URL;
-
-      }
-
-
-      // ----------------------------------------------------------
-      // Build final check-in URL.
-      // ----------------------------------------------------------
-
-      const connector =
-        returnUrl.includes("?")
-          ? "&"
-          : "?";
-
-      const destination =
-        returnUrl +
-        connector +
-        "volunteerId=" +
-        encodeURIComponent(volunteerId);
+      const eventDay =
+        scannerParams.get(
+          "eventDay"
+        ) || "";
 
 
       console.log(
@@ -356,19 +442,127 @@
         volunteerId
       );
 
+
       console.log(
-        "Returning to:",
-        destination
+        "Event Day:",
+        eventDay
       );
 
 
       // ----------------------------------------------------------
-      // Redirect back to Apps Script.
+      // PRIMARY:
+      // Send result to the check-in page that opened scanner
       // ----------------------------------------------------------
 
-      window.location.href =
-        destination;
+      if (
+        window.opener &&
+        !window.opener.closed
+      ) {
 
+        window.opener.postMessage(
+
+          {
+            type:
+              "hyroxVolunteerScan",
+
+            volunteerId:
+              volunteerId,
+
+            eventDay:
+              eventDay
+          },
+
+          "https://script.google.com"
+        );
+
+
+        console.log(
+          "Volunteer ID + Event Day sent to check-in window."
+        );
+
+
+        setTimeout(
+          function() {
+
+            window.close();
+
+          },
+          300
+        );
+
+
+        return;
+      }
+
+
+      // ----------------------------------------------------------
+      // FALLBACK:
+      // Redirect using returnUrl
+      // ----------------------------------------------------------
+
+      const returnUrl =
+        scannerParams.get(
+          "returnUrl"
+        );
+
+
+      if (returnUrl) {
+
+        const returnParams =
+          new URLSearchParams();
+
+
+        returnParams.set(
+          "volunteerId",
+          volunteerId
+        );
+
+
+        if (eventDay) {
+
+          returnParams.set(
+            "eventDay",
+            eventDay
+          );
+        }
+
+
+        const destination =
+          returnUrl +
+          (
+            returnUrl.includes("?")
+              ? "&"
+              : "?"
+          ) +
+          returnParams.toString();
+
+
+        console.log(
+          "Fallback redirect:",
+          destination
+        );
+
+
+        window.location.href =
+          destination;
+
+
+        return;
+      }
+
+
+      // ----------------------------------------------------------
+      // No return mechanism
+      // ----------------------------------------------------------
+
+      setStatus(
+        "Scanner was not opened from the check-in screen.",
+        "error"
+      );
+
+
+      scanAccepted =
+        false;
     }
 
 
@@ -380,14 +574,19 @@
       "click",
       async function() {
 
-        startButton.disabled = true;
+        startButton.disabled =
+          true;
+
 
         setStatus(
           "Initializing rear camera...",
           "success"
         );
 
-        scanAccepted = false;
+
+        scanAccepted =
+          false;
+
 
         shutDownVideoHardware();
 
@@ -418,22 +617,29 @@
         try {
 
           activeStream =
-            await navigator.mediaDevices.getUserMedia(
-              constraints
-            );
+            await navigator
+              .mediaDevices
+              .getUserMedia(
+                constraints
+              );
+
 
           videoElement.srcObject =
             activeStream;
 
+
           readerElement.style.display =
             "block";
+
 
           setStatus(
             "Rear camera running. Center the QR code inside the green box.",
             "success"
           );
 
+
           await videoElement.play();
+
 
           initializeQrDecoder();
 
@@ -453,23 +659,33 @@
           try {
 
             activeStream =
-              await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: false
-              });
+              await navigator
+                .mediaDevices
+                .getUserMedia({
+
+                  video: true,
+
+                  audio: false
+
+                });
+
 
             videoElement.srcObject =
               activeStream;
 
+
             readerElement.style.display =
               "block";
+
 
             setStatus(
               "Camera online. Center the QR code inside the green box.",
               "success"
             );
 
+
             await videoElement.play();
+
 
             initializeQrDecoder();
 
@@ -481,28 +697,29 @@
               fatal
             );
 
-            startButton.disabled = false;
+
+            startButton.disabled =
+              false;
+
 
             setStatus(
               "Camera access failed. Please allow camera access in your browser settings and try again.",
               "error"
             );
-
           }
-
         }
-
       }
     );
 
 
     // ============================================================
-    // INITIALIZE QR DECODER
+    // QR DECODER
     // ============================================================
 
     function initializeQrDecoder() {
 
-      nativeDetector = null;
+      nativeDetector =
+        null;
 
 
       if (
@@ -513,8 +730,13 @@
 
           nativeDetector =
             new window.BarcodeDetector({
-              formats: ["qr_code"]
+
+              formats: [
+                "qr_code"
+              ]
+
             });
+
 
         } catch (error) {
 
@@ -523,15 +745,14 @@
             error
           );
 
-          nativeDetector = null;
 
+          nativeDetector =
+            null;
         }
-
       }
 
 
       startScanningLoop();
-
     }
 
 
@@ -543,13 +764,15 @@
 
       if (scanInterval) {
 
-        clearInterval(scanInterval);
-
+        clearInterval(
+          scanInterval
+        );
       }
 
 
       scanInterval =
         setInterval(
+
           async function() {
 
             if (scanAccepted) {
@@ -561,12 +784,13 @@
               videoElement.readyState <
               videoElement.HAVE_CURRENT_DATA
             ) {
+
               return;
             }
 
 
             // ----------------------------------------------------
-            // NATIVE BARCODE DETECTOR
+            // NATIVE DETECTOR
             // ----------------------------------------------------
 
             if (nativeDetector) {
@@ -588,9 +812,10 @@
                     barcodes[0].rawValue
                   );
 
-                  return;
 
+                  return;
                 }
+
 
               } catch (error) {
 
@@ -598,9 +823,7 @@
                   "Native QR detection failed.",
                   error
                 );
-
               }
-
             }
 
 
@@ -609,7 +832,8 @@
             // ----------------------------------------------------
 
             if (
-              typeof jsQR === "function"
+              typeof jsQR ===
+              "function"
             ) {
 
               try {
@@ -622,15 +846,13 @@
                   "jsQR scanning failed.",
                   error
                 );
-
               }
-
             }
 
           },
+
           200
         );
-
     }
 
 
@@ -643,6 +865,7 @@
       const width =
         videoElement.videoWidth;
 
+
       const height =
         videoElement.videoHeight;
 
@@ -651,12 +874,14 @@
         !width ||
         !height
       ) {
+
         return;
       }
 
 
       canvasElement.width =
         width;
+
 
       canvasElement.height =
         height;
@@ -682,13 +907,18 @@
 
       const code =
         jsQR(
+
           imageData.data,
+
           imageData.width,
+
           imageData.height,
+
           {
             inversionAttempts:
               "attemptBoth"
           }
+
         );
 
 
@@ -697,22 +927,25 @@
         code.data
       ) {
 
-        console.log(
-          "jsQR detected:",
-          code.data
-        );
-
         transmitVolunteerToken(
           code.data
         );
-
       }
-
     }
 
 
     // ============================================================
-    // TEST MODE
+    // TESTING
+    // ============================================================
+    //
+    // Example:
+    //
+    // ?id=HYXMUM260001
+    //
+    // Example with event day:
+    //
+    // ?id=HYXMUM260001&eventDay=18%20September
+    //
     // ============================================================
 
     const testParams =
@@ -732,6 +965,7 @@
       if (testVolunteerId) {
 
         window.setTimeout(
+
           function() {
 
             transmitVolunteerToken(
@@ -739,11 +973,10 @@
             );
 
           },
+
           500
         );
-
       }
-
     }
 
 
