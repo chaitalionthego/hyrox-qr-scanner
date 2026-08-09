@@ -397,158 +397,40 @@
       }
 
 
-      const volunteerId =
-        String(
-          rawId || ""
-        ).trim();
+      const params =
+  new URLSearchParams(
+    window.location.search
+  );
 
+const returnUrl =
+  params.get("returnUrl");
 
-      if (!volunteerId) {
-        return;
-      }
+const eventDay =
+  params.get("eventDay") || "";
 
+if (returnUrl) {
 
-      scanAccepted =
-        true;
+  const url =
+    new URL(returnUrl);
 
+  url.searchParams.set(
+    "volunteerId",
+    volunteerId
+  );
 
-      shutDownVideoHardware();
+  if (eventDay) {
 
+    url.searchParams.set(
+      "eventDay",
+      eventDay
+    );
+  }
 
-      setStatus(
-        "QR Code detected! Returning to check-in...",
-        "success"
-      );
+  window.location.href =
+    url.toString();
 
-
-      // ----------------------------------------------------------
-      // Get Event Day that was passed from check-in page
-      // ----------------------------------------------------------
-
-      const scannerParams =
-        new URLSearchParams(
-          window.location.search
-        );
-
-
-      const eventDay =
-        scannerParams.get(
-          "eventDay"
-        ) || "";
-
-
-      console.log(
-        "Scanned Volunteer ID:",
-        volunteerId
-      );
-
-
-      console.log(
-        "Event Day:",
-        eventDay
-      );
-
-
-      // ----------------------------------------------------------
-      // PRIMARY:
-      // Send result to the check-in page that opened scanner
-      // ----------------------------------------------------------
-
-      if (
-        window.opener &&
-        !window.opener.closed
-      ) {
-
-        window.opener.postMessage(
-
-          {
-            type:
-              "hyroxVolunteerScan",
-
-            volunteerId:
-              volunteerId,
-
-            eventDay:
-              eventDay
-          },
-
-          "https://script.google.com"
-        );
-
-
-        console.log(
-          "Volunteer ID + Event Day sent to check-in window."
-        );
-
-
-        setTimeout(
-          function() {
-
-            window.close();
-
-          },
-          300
-        );
-
-
-        return;
-      }
-
-
-      // ----------------------------------------------------------
-      // FALLBACK:
-      // Redirect using returnUrl
-      // ----------------------------------------------------------
-
-      const returnUrl =
-        scannerParams.get(
-          "returnUrl"
-        );
-
-
-      if (returnUrl) {
-
-        const returnParams =
-          new URLSearchParams();
-
-
-        returnParams.set(
-          "volunteerId",
-          volunteerId
-        );
-
-
-        if (eventDay) {
-
-          returnParams.set(
-            "eventDay",
-            eventDay
-          );
-        }
-
-
-        const destination =
-          returnUrl +
-          (
-            returnUrl.includes("?")
-              ? "&"
-              : "?"
-          ) +
-          returnParams.toString();
-
-
-        console.log(
-          "Fallback redirect:",
-          destination
-        );
-
-
-        window.location.href =
-          destination;
-
-
-        return;
-      }
+  return;
+}
 
 
       // ----------------------------------------------------------
