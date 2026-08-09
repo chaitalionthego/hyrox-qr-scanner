@@ -80,11 +80,47 @@
         return;
       }
 
-      setStatus("QR code scanned. Opening the volunteer check-in record...", "success");
       const separator = returnUrl.includes("?") ? "&" : "?";
+      const targetUrl = returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId);
+
+      // If this page was opened as a popup from the check-in app,
+      // window.opener points back at that main tab. Browsers allow a
+      // popup to navigate window.opener.location even cross-origin
+      // (only *reading* cross-origin window properties is blocked), so
+      // this updates the operator's main screen instead of the popup.
+      const opener = window.opener;
+      const hasOpener = !!(opener && !opener.closed);
+
+      setStatus(
+        hasOpener
+          ? "QR code scanned. Updating your check-in screen..."
+          : "QR code scanned. Opening the volunteer check-in record...",
+        "success"
+      );
+
       window.setTimeout(() => {
-        window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
+
+        if (hasOpener) {
+
+          try {
+            opener.location.replace(targetUrl);
+            window.close();
+            return;
+          } catch (error) {
+            // Fall through to self-navigation if, for any reason, the
+            // opener can no longer be navigated (e.g. it was closed
+            // between the check above and now).
+            console.warn("Unable to update opener window, navigating scanner instead", error);
+          }
+
+        }
+
+        // No opener available (scanner opened directly, not via the
+        // check-in app's popup) — fall back to navigating this window.
+        window.location.replace(targetUrl);
+
       }, 400);
+
     }
 
     startButton.addEventListener("click", async function() {
