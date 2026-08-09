@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HYROX QR Scanner</title>
+  
+  <!-- Loads the 100% complete, official open-source QR reading engine -->
+  <script src="https://jsdelivr.net"></script>
+
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f5f5f5; color: #111; font-family: Arial, sans-serif; }
@@ -13,13 +17,10 @@
     p { line-height: 1.45; }
     button { width: 100%; border: 0; border-radius: 8px; padding: 14px; background: #111; color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; }
     button:disabled { background: #888; cursor: not-allowed; }
-    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; background: #000; position: relative; }
-    video { width: 100%; height: auto; display: block; background: #000; transform: scaleX(1); }
+    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; background: #000; min-height: 280px; }
     #status { min-height: 24px; margin: 14px 0 0; font-weight: bold; }
     .error { color: #b42318; }
     .success { color: #18753a; }
-    .sim-box { padding: 15px; text-align: center; background: #222; color: #fff; border-top: 2px dashed #444; }
-    .sim-box input { padding: 10px; border-radius: 6px; border: none; width: 80%; text-align: center; margin-top: 10px; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -38,147 +39,90 @@
     const CHECKIN_WEB_APP_URL = "https://google.com";
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
-    const readerElement = document.getElementById("reader");
-    
-    let localStream = null;
+    let html5QrCode = null;
     let scanAccepted = false;
-    let activeTrackInterval = null;
 
     function setStatus(message, type) {
       statusElement.textContent = message;
       statusElement.className = type || "";
     }
 
-    function stopHardwareScanner() {
-      scanAccepted = false;
-      if (activeTrackInterval) {
-        clearInterval(activeTrackInterval);
-        activeTrackInterval = null;
+    async function stopScanner() {
+      if (!html5QrCode) return;
+      try {
+        if (html5QrCode.isScanning) {
+          await html5QrCode.stop();
+        }
+      } catch (e) {
+        console.warn("Scanner stopped cleanly:", e);
+      } finally {
+        html5QrCode = null;
       }
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
-      readerElement.innerHTML = "";
     }
 
-    function transmitScannedToken(rawVolunteerId) {
-      const volunteerId = String(rawVolunteerId || "").trim();
-      if (!volunteerId) return;
-
-      stopHardwareScanner();
-      setStatus("Code captured! Syncing details with your check-in system...", "success");
+    async function onScanSuccess(decodedText) {
+      if (scanAccepted) return;
+      scanAccepted = true;
+      
+      const volunteerId = decodedText.trim();
+      setStatus("QR Code detected! Syncing with check-in app...", "success");
+      await stopScanner();
 
       const opener = window.opener;
       if (opener && !opener.closed) {
         try {
-          // Real-time update handshake bridge back to Google Apps Script tab wrapper
+          // Instant real-time handshake bridge back to your main check-in dashboard tab
           opener.postMessage({ type: "hyroxVolunteerScan", volunteerId: volunteerId }, "*");
-          window.setTimeout(() => window.close(), 500);
+          window.setTimeout(() => window.close(), 400);
           return;
         } catch (error) {
-          console.warn("Cross-window postMessage blocked, using direct fallback routing:", error);
+          console.warn("Handshake blocked, executing direct fallback redirection:", error);
         }
       }
-
-      // Safe Fallback redirect route option
-      const separator = CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
-      window.location.replace(CHECKIN_WEB_APP_URL + separator + "volunteerId=" + encodeURIComponent(volunteerId));
+      
+      // Fallback redirection path if popup tracking connection is lost
+      window.location.replace(CHECKIN_WEB_APP_URL + "?volunteerId=" + encodeURIComponent(volunteerId));
     }
 
     startButton.addEventListener("click", async function() {
-      startButton.disabled = true;
-      setStatus("Invoking rear tracking lens profile...", "success");
-      stopHardwareScanner();
-
-      // FIXED BUG 1: Constrain the media stream configuration options to enforce the REAR camera array exclusively
-      const structuralConstraints = {
-        video: {
-          facingMode: { exact: "environment" }, // Forces device to pick rear lens profile over selfie lens
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      };
-
-      try {
-        // Attempt strict rear camera launch parameters
-        localStream = await navigator.mediaDevices.getUserMedia(structuralConstraints);
-      } catch (modeError) {
-        console.warn("Strict rear mode unavailable, falling back to soft target rules...", modeError);
-        try {
-          // Flexible fallback if the device or desktop webcam doesn't report an 'environment' label profile string
-          localStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: "environment" }, 
-            audio: false 
-          });
-        } catch (hardwareError) {
-          console.error("Camera pipeline initialization crash exception:", hardwareError);
-          startButton.disabled = false;
-          setStatus("Camera link blocked. Please verify application site permissions inside your browser settings.", "error");
-          injectSimulatorConsole();
-          return;
-        }
+      if (!window.Html5Qrcode) {
+        setStatus("The tracking engine failed to load. Please check your internet connection and try again.", "error");
+        return;
       }
 
-      // Render the raw hardware preview video feed element container dynamically
-      const videoElement = document.createElement("video");
-      videoElement.setAttribute("autoplay", "autoplay");
-      videoElement.setAttribute("playsinline", "true");
-      videoElement.setAttribute("muted", "true");
-      videoElement.srcObject = localStream;
-      readerElement.appendChild(videoElement);
+      startButton.disabled = true;
+      setStatus("Initializing rear camera tracking lens...", "success");
+      scanAccepted = false;
+      await stopScanner();
+      document.getElementById("reader").innerHTML = "";
 
-      setStatus("Camera active. Align the badge QR directly inside the viewfinder boundary.", "success");
-      injectSimulatorConsole();
+      try {
+        // Correctly instantiate the real, production-grade library class
+        html5QrCode = new window.Html5Qrcode("reader");
 
-      // FIXED BUG 2: Active automated code matrix engine loop scanner tracker simulation layer
-      const dynamicCanvas = document.createElement("canvas");
-      const canvasContext = dynamicCanvas.getContext("2d");
+        // Enforce the device's REAR camera array explicitly with structural tracking boxes
+        const configurationSettings = { 
+          fps: 15, 
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0 
+        };
 
-      activeTrackInterval = setInterval(() => {
-        if (videoElement.readyState === videoElement.HAVE_CURRENT_DATA || videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-          dynamicCanvas.width = 300;
-          dynamicCanvas.height = 300;
-          // Continually pulls video matrices frames directly out of your camera feed stream loop
-          canvasContext.drawImage(videoElement, 0, 0, dynamicCanvas.width, dynamicCanvas.height);
-          
-          // Native barcode scanning detector fallback hook channel integration
-          if (window.__forceLiveBadgeDataOverride) {
-            const token = window.__forceLiveBadgeDataOverride;
-            window.__forceLiveBadgeDataOverride = null;
-            transmitScannedToken(token);
-          }
-        }
-      }, 250);
+        await html5QrCode.start(
+          { facingMode: "environment" }, 
+          configurationSettings, 
+          onScanSuccess, 
+          function() { /* Continuous reading channel frames logs */ }
+        );
+
+        setStatus("Rear camera tracking live. Center the volunteer's QR code inside the box overlay.", "success");
+      } catch (error) {
+        console.error(error);
+        startButton.disabled = false;
+        setStatus("Camera launch failed. Details: " + (error.message || error), "error");
+      }
     });
 
-    function injectSimulatorConsole() {
-      // Append a safe local developer data entry terminal window to enable instant verification 
-      const existingSim = document.getElementById("simTerminal");
-      if (existingSim) existingSim.remove();
-
-      const containerBox = document.createElement("div");
-      containerBox.id = "simTerminal";
-      containerBox.className = "sim-box";
-      containerBox.innerHTML = `
-        <label for="manualInput"><b>On-Site Test Terminal Console</b></label><br>
-        <small style="opacity:0.8;">Type a Volunteer ID string below and hit Enter to test layout tracking updates:</small><br>
-        <input id="manualInput" type="text" placeholder="e.g. HYXMUM260021" autocomplete="off">
-      `;
-      readerElement.appendChild(containerBox);
-
-      const input = document.getElementById("manualInput");
-      input.focus();
-      input.addEventListener("keydown", function(e) {
-        if (e.key === "Enter" && input.value.trim()) {
-          window.__forceLiveBadgeDataOverride = input.value.trim();
-        }
-      });
-    }
-
-    window.addEventListener("beforeunload", stopHardwareScanner);
+    window.addEventListener("beforeunload", stopScanner);
   </script>
 </body>
 </html>
- 
