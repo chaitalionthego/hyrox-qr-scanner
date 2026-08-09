@@ -34,7 +34,7 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const returnOrigin = params.get("returnOrigin");
+    const returnUrl = params.get("returnUrl");
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
     let scanner = null;
@@ -45,10 +45,11 @@
       statusElement.className = type || "";
     }
 
-    function isValidReturnOrigin(origin) {
+    function isValidReturnUrl(urlValue) {
       try {
-        const url = new URL(origin);
-        return url.protocol === "https:" && url.hostname.endsWith(".googleusercontent.com");
+        const url = new URL(urlValue);
+        return url.protocol === "https:" && url.hostname === "script.google.com" &&
+          url.pathname.startsWith("/macros/s/") && url.pathname.endsWith("/exec");
       } catch (error) {
         return false;
       }
@@ -74,22 +75,20 @@
       const volunteerId = decodedText.trim();
       await stopScanner();
 
-      if (!window.opener || window.opener.closed) {
-        setStatus("The check-in page is no longer open. Please return to it and start another scan.", "error");
+      if (!isValidReturnUrl(returnUrl)) {
+        setStatus("This scanner was opened incorrectly. Return to the HYROX check-in page and use its Scan QR button.", "error");
         return;
       }
 
-      window.opener.postMessage(
-        { type: "HYROX_QR_SCANNED", volunteerId: volunteerId },
-        returnOrigin
-      );
-
-      setStatus("QR code scanned. Returning the Volunteer ID to check-in...", "success");
-      window.setTimeout(() => window.close(), 800);
+      setStatus("QR code scanned. Opening the volunteer check-in record...", "success");
+      const separator = returnUrl.includes("?") ? "&" : "?";
+      window.setTimeout(() => {
+        window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
+      }, 400);
     }
 
     startButton.addEventListener("click", async function() {
-      if (!isValidReturnOrigin(returnOrigin)) {
+      if (!isValidReturnUrl(returnUrl)) {
         setStatus("This scanner was opened incorrectly. Return to the HYROX check-in page and use its Scan QR button.", "error");
         return;
       }
