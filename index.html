@@ -36,7 +36,7 @@
       <div id="status" aria-live="polite"></div>
     </div>
   </main>
-  <script>
+    <script>
     const CHECKIN_WEB_APP_URL = "https://google.com";
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
@@ -75,39 +75,40 @@
     }
 
     startButton.addEventListener("click", async function() {
+      if (!window.Html5Qrcode) {
+        setStatus("Library failed to initialize cleanly.", "error");
+        return;
+      }
       startButton.disabled = true;
-      setStatus("Initializing camera...");
+      setStatus("Initializing rear camera...");
       scanAccepted = false;
       await stopScanner();
       document.getElementById("reader").innerHTML = "";
 
       try {
-        // Run safe check on the self-hosted constructor wrapper
-        const TargetConstructor = (window.Html5Qrcode && window.Html5Qrcode.Html5Qrcode) ? window.Html5Qrcode.Html5Qrcode : window.Html5Qrcode;
-        scanner = new TargetConstructor("reader");
+        scanner = new Html5Qrcode("reader");
 
-        const cameras = await TargetConstructor.getCameras();
-        if (!cameras || cameras.length === 0) throw new Error("No cameras found.");
-
-        let targetCam = cameras.find(c => /(back|rear|environment)/i.test(c.label || "")) || cameras[0];
-        await scanner.start(targetCam.id, { fps: 15 }, onScanSuccess, function() {});
-        setStatus("Camera running live. Hold badge up to lens.", "success");
+        // BUG 1 FIX: Strictly command the hardware layer to invoke the environment/rear camera lens array
+        await scanner.start(
+          { facingMode: "environment" },
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          }, 
+          onScanSuccess, 
+          function() {}
+        );
+        setStatus("Camera running live. Point at the volunteer badge QR code.", "success");
       } catch (error) {
         console.error(error);
-        
-        // DESKTOP FALLBACK SIMULATOR: If camera hardware initialization errors out,
-        // display a prompt instantly so you can test data transfer to your spreadsheet!
-        const mockID = prompt("Camera stream blocked. Type a Volunteer ID string manually to simulate a scan:");
-        if (mockID) {
-          onScanSuccess(mockID);
-        } else {
-          startButton.disabled = false;
-          setStatus("Webcam link failed. Details: " + (error.message || error), "error");
-        }
+        startButton.disabled = false;
+        setStatus("Camera access failed. Details: " + (error.message || error), "error");
       }
     });
     window.addEventListener("beforeunload", stopScanner);
   </script>
+
 
 </body>
 </html>
