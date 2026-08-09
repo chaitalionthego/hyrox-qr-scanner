@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HYROX QR Scanner</title>
   
-  <!-- This line forces the app to load from your uploaded repository file -->
+  <!-- Points directly to your updated self-hosted file -->
   <script src="html5-qrcode.min.js"></script>
 
   <style>
@@ -16,13 +16,14 @@
     h1 { font-size: 23px; margin: 0 0 10px; }
     p { line-height: 1.45; }
     button { width: 100%; border: 0; border-radius: 8px; padding: 14px; background: #111; color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; }
-    button:disabled { background: #888; cursor: not-allowed; }
-    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; }
+    button:disabled { background: #888; cursor:not-allowed; }
+    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; background:#000; min-height: 250px; }
     #status { min-height: 24px; margin: 14px 0 0; font-weight: bold; }
     .error { color: #b42318; }
     .success { color: #18753a; }
   </style>
 </head>
+
 
 
 <body>
