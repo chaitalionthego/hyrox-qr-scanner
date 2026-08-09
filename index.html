@@ -388,46 +388,88 @@
     // SEND QR RESULT
     // ============================================================
 
-    function transmitVolunteerToken(
-      rawId
-    ) {
+function transmitVolunteerToken(rawId) {
 
       if (scanAccepted) {
         return;
       }
 
+      const volunteerId =
+        String(rawId || "").trim();
 
-      
+      if (!volunteerId) {
+        return;
+      }
 
-const returnUrl =
-  params.get("returnUrl");
+      scanAccepted = true;
 
+      shutDownVideoHardware();
 
+      setStatus(
+        "QR Code detected! Returning to check-in...",
+        "success"
+      );
 
-if (returnUrl) {
+      // ----------------------------------------------------------
+      // Get Event Day that was passed from check-in page
+      // ----------------------------------------------------------
 
-  const url =
-    new URL(returnUrl);
+      const scannerParams =
+        new URLSearchParams(window.location.search);
 
-  url.searchParams.set(
-    "volunteerId",
-    volunteerId
-  );
+      const eventDay =
+        scannerParams.get("eventDay") || "";
 
-  if (eventDay) {
+      console.log("Scanned Volunteer ID:", volunteerId);
+      console.log("Event Day:", eventDay);
 
-    url.searchParams.set(
-      "eventDay",
-      eventDay
-    );
-  }
+      // ----------------------------------------------------------
+      // PRIMARY:
+      // Send result to the check-in page that opened scanner
+      // ----------------------------------------------------------
 
-  window.location.href =
-    url.toString();
+      if (window.opener && !window.opener.closed) {
 
-  return;
-}
+        window.opener.postMessage(
+          {
+            type: "hyroxVolunteerScan",
+            volunteerId: volunteerId,
+            eventDay: eventDay
+          },
+          "https://script.google.com"
+        );
 
+        console.log("Volunteer ID + Event Day sent to check-in window.");
+
+        setTimeout(function() {
+          window.close();
+        }, 300);
+
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // FALLBACK:
+      // Redirect using returnUrl
+      // ----------------------------------------------------------
+
+      const returnUrl =
+        scannerParams.get("returnUrl");
+
+      if (returnUrl) {
+
+        const url = new URL(returnUrl);
+
+        url.searchParams.set("volunteerId", volunteerId);
+
+        if (eventDay) {
+          url.searchParams.set("eventDay", eventDay);
+        }
+
+        window.location.href = url.toString();
+
+        return;
+      }
 
       // ----------------------------------------------------------
       // No return mechanism
@@ -438,9 +480,7 @@ if (returnUrl) {
         "error"
       );
 
-
-      scanAccepted =
-        false;
+      scanAccepted = false;
     }
 
 
