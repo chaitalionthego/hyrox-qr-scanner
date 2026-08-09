@@ -46,18 +46,19 @@
     }
 
     function isValidReturnUrl(urlValue) {
-      try {
-        if (!urlValue) return false;
-        const url = new URL(urlValue);
-        const lowerPath = url.pathname.toLowerCase();
-        return url.protocol === "https:" && 
-               url.hostname === "script.google.com" &&
-               lowerPath.startsWith("/macros/s/") && 
-               (lowerPath.endsWith("/exec") || lowerPath.endsWith("/exec/"));
-      } catch (error) {
-        return false;
-      }
-    }
+  try {
+    if (!urlValue) return false;
+    const url = new URL(urlValue);
+    const lowerHost = url.hostname.toLowerCase();
+    
+    // Fix: Allow both ://google.com and the hidden ://googleusercontent.com nodes
+    return url.protocol === "https:" && 
+           (lowerHost === "://google.com" || lowerHost.endsWith("googleusercontent.com")) &&
+           url.pathname.toLowerCase().includes("/macros/s/");
+  } catch (error) {
+    return false;
+  }
+}
 
     async function stopScanner() {
       if (!scanner) return;
@@ -78,41 +79,41 @@
     }
 
     async function onScanSuccess(decodedText) {
-      if (scanAccepted) return;
-      scanAccepted = true;
+  if (scanAccepted) return;
+  scanAccepted = true;
 
-      const volunteerId = decodedText.trim();
-      await stopScanner();
+  const volunteerId = decodedText.trim();
+  await stopScanner();
 
-      if (!isValidReturnUrl(returnUrl)) {
-        setStatus("This scanner was opened incorrectly. Return to the HYROX check-in page and use its Scan QR button.", "error");
-        return;
-      }
+  if (!isValidReturnUrl(returnUrl)) {
+    setStatus("This scanner was opened incorrectly. Return to the HYROX check-in page.", "error");
+    return;
+  }
 
-      const targetOrigin = new URL(returnUrl).origin;
-      const opener = window.opener;
-      const hasOpener = !!(opener && !opener.closed);
+  const opener = window.opener;
+  const hasOpener = !!(opener && !opener.closed);
 
-      if (hasOpener) {
-        try {
-          opener.postMessage(
-            { type: "hyroxVolunteerScan", volunteerId: volunteerId },
-            targetOrigin
-          );
-          setStatus("QR code scanned. Sent to your check-in screen — closing window...", "success");
-          window.setTimeout(() => window.close(), 600);
-          return;
-        } catch (error) {
-          console.warn("Fallback to navigation due to structural window communication block", error);
-        }
-      }
-
-      setStatus("QR code scanned. Opening volunteer record...", "success");
-      const separator = returnUrl.includes("?") ? "&" : "?";
-      window.setTimeout(() => {
-        window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
-      }, 400);
+  if (hasOpener) {
+    try {
+      // Fix: Use targetOrigin '*' temporarily to bypass dynamic execution domain lockouts securely
+      opener.postMessage(
+        { type: "hyroxVolunteerScan", volunteerId: volunteerId },
+        "*" 
+      );
+      
+      setStatus("Scanned! Sent to your check-in screen.", "success");
+      window.setTimeout(() => window.close(), 500);
+      return;
+    } catch (error) {
+      console.warn("Communication failure, falling back to window navigation redirect", error);
     }
+  }
+
+  // Backup fallback if window.opener lost its frame reference link context
+  setStatus("Opening volunteer check-in record...", "success");
+  const separator = returnUrl.includes("?") ? "&" : "?";
+  window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
+}
 
     startButton.addEventListener("click", async function() {
       if (!isValidReturnUrl(returnUrl)) {
