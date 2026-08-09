@@ -47,9 +47,13 @@
 
     function isValidReturnUrl(urlValue) {
       try {
+        if (!urlValue) return false;
         const url = new URL(urlValue);
-        return url.protocol === "https:" && url.hostname === "script.google.com" &&
-          url.pathname.startsWith("/macros/s/") && url.pathname.endsWith("/exec");
+        const lowerPath = url.pathname.toLowerCase();
+        return url.protocol === "https:" && 
+               url.hostname === "script.google.com" &&
+               lowerPath.startsWith("/macros/s/") && 
+               (lowerPath.endsWith("/exec") || lowerPath.endsWith("/exec/"));
       } catch (error) {
         return false;
       }
@@ -57,14 +61,19 @@
 
     async function stopScanner() {
       if (!scanner) return;
-
       try {
         if (scanner.isScanning) {
           await scanner.stop();
         }
-        scanner.clear();
       } catch (error) {
-        console.warn("Unable to stop scanner", error);
+        console.warn("Unable to stop scanner engine", error);
+      } finally {
+        try {
+          scanner.clear();
+        } catch(e) {
+          console.warn("Element clear skipped", e);
+        }
+        scanner = null;
       }
     }
 
@@ -85,31 +94,20 @@
       const hasOpener = !!(opener && !opener.closed);
 
       if (hasOpener) {
-
-        // Hand the scanned ID directly to the already-open check-in tab
-        // via postMessage, so it updates in place — no reload, no URL
-        // change. window.opener.postMessage is allowed cross-origin even
-        // though most other access to a cross-origin window is blocked.
         try {
-
           opener.postMessage(
             { type: "hyroxVolunteerScan", volunteerId: volunteerId },
             targetOrigin
           );
-
-          setStatus("QR code scanned. Sent to your check-in screen — you can close this window.", "success");
+          setStatus("QR code scanned. Sent to your check-in screen — closing window...", "success");
           window.setTimeout(() => window.close(), 600);
           return;
-
         } catch (error) {
-          console.warn("Unable to message opener window, navigating scanner instead", error);
+          console.warn("Fallback to navigation due to structural window communication block", error);
         }
-
       }
 
-      // No opener available (scanner opened directly, not via the
-      // check-in app's popup) — fall back to navigating this window.
-      setStatus("QR code scanned. Opening the volunteer check-in record...", "success");
+      setStatus("QR code scanned. Opening volunteer record...", "success");
       const separator = returnUrl.includes("?") ? "&" : "?";
       window.setTimeout(() => {
         window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
@@ -130,35 +128,38 @@
       startButton.disabled = true;
       setStatus("Opening camera...");
       scanAccepted = false;
-      scanner = new Html5Qrcode("reader", {
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-      });
+
+      // Clean up past bindings to reset state cleanly
+      await stopScanner();
+      
+      document.getElementById("reader").innerHTML = "";
 
       try {
-        // iPhone browsers are more reliable when the physical rear-camera
-        // ID is selected explicitly instead of using facingMode alone.
-        const cameras = await Html5Qrcode.getCameras();
+        scanner = new Html5Qrcode("reader", {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+        });
 
+        const cameras = await Html5Qrcode.getCameras();
         if (!cameras || cameras.length === 0) {
-          throw new Error("No camera was found on this device.");
+          throw new Error("No camera found on this device.");
         }
 
         const rearCamera = cameras.find(camera =>
-          /(back|rear|environment)/i.test(camera.label)
+          /(back|rear|environment|surface)/i.test(camera.label)
         ) || cameras[cameras.length - 1];
 
         await scanner.start(
           rearCamera.id,
-          { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
+          { fps: 12, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
           onScanSuccess,
           function() {}
         );
-        setStatus("Camera ready. Scan the QR code.");
+        setStatus("Camera ready. Scan the QR code.", "success");
       } catch (error) {
-        console.error("Camera start failed", error);
+        console.error("Camera engine failure:", error);
         startButton.disabled = false;
         setStatus(
-          "Unable to open the camera. In iPhone Settings, allow Camera for Chrome, then try again. Details: " +
+          "Camera access denied. Ensure browser permissions are granted and try again. Technical Details: " +
           (error.message || error),
           "error"
         );
