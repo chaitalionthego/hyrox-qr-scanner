@@ -247,97 +247,33 @@
 
     function transmitVolunteerToken(rawId) {
 
-      if (scanAccepted) {
-        return;
-      }
+  if (scanAccepted) return;
 
-      const volunteerId =
-        String(rawId || "").trim();
+  const volunteerId = String(rawId || "").trim();
 
+  if (!volunteerId) return;
 
-      if (!volunteerId) {
-        return;
-      }
+  scanAccepted = true;
 
+  shutDownVideoHardware();
 
-      scanAccepted = true;
+  setStatus(
+    "QR Code detected! Loading volunteer data...",
+    "success"
+  );
 
+  const connector =
+    CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
 
-      // Stop camera immediately after successful scan.
-      shutDownVideoHardware();
+  const returnUrl =
+    CHECKIN_WEB_APP_URL +
+    connector +
+    "volunteerId=" +
+    encodeURIComponent(volunteerId);
 
-
-      setStatus(
-        "QR Code detected! Loading volunteer data...",
-        "success"
-      );
-
-
-      const parentWindow =
-        window.opener;
-
-
-      // ----------------------------------------------------------
-      // PRIMARY PATH
-      // Send the Volunteer ID back to the existing
-      // HYROX Check-In window.
-      // ----------------------------------------------------------
-
-      if (
-        parentWindow &&
-        !parentWindow.closed
-      ) {
-
-        try {
-
-          parentWindow.postMessage(
-            {
-              type: "hyroxVolunteerScan",
-              volunteerId: volunteerId
-            },
-            "*"
-          );
-
-
-          // Give postMessage a moment to be delivered,
-          // then close scanner window.
-
-          window.setTimeout(
-            () => window.close(),
-            400
-          );
-
-          return;
-
-        } catch (error) {
-
-          console.warn(
-            "Unable to send scan to parent window.",
-            error
-          );
-        }
-      }
-
-
-      // ----------------------------------------------------------
-      // FALLBACK
-      // If scanner was opened without a parent window,
-      // redirect to the Apps Script check-in page.
-      // ----------------------------------------------------------
-
-      const connector =
-        CHECKIN_WEB_APP_URL.includes("?")
-          ? "&"
-          : "?";
-
-
-      window.location.replace(
-        CHECKIN_WEB_APP_URL +
-        connector +
-        "volunteerId=" +
-        encodeURIComponent(volunteerId)
-      );
-    }
+  // Return directly to the Apps Script check-in page.
+  window.location.replace(returnUrl);
+}
 
 
     // ============================================================
