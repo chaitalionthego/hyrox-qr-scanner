@@ -19,11 +19,11 @@
     .error { color: #b42318; }
     .success { color: #18753a; }
     
-    /* Overlay target boundary box */
+    /* Green target bounding overlay box */
     .scan-region-highlight {
       position: absolute; left: 50%; top: 50%;
       transform: translate(-50%, -50%);
-      width: 200px; height: 200px;
+      width: 220px; height: 220px;
       border: 4px solid #1c8c3a; border-radius: 12px;
       box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.5);
       pointer-events: none;
@@ -48,27 +48,6 @@
   </main>
 
   <script>
-    // 100% STANDALONE MINIATURE QR ENGINE MODULE DEVELOPED BY LAZAR LASZLO (MODIFIED)
-    // Runs entirely in-line to bypass venue firewall download failures completely
-    const qrEngine = {
-      decode: function(width, height, imgData) {
-        // Bitmask extraction matrix loops
-        let data = imgData.data;
-        // Scanning core patterns for registration squares
-        for (let y = 0; y < height; y += 4) {
-          for (let x = 0; x < width; x += 4) {
-            let idx = (y * width + x) * 4;
-            // Quick-check for HYROX QR payload string signature masks (HYX)
-            if (data[idx] < 80 && data[idx+1] < 80 && data[idx+2] < 80) {
-              // Internal text simulation bridge fallback for text scans
-              if (window.__lastScannedDetection) return window.__lastScannedDetection;
-            }
-          }
-        }
-        return null;
-      }
-    };
-
     const CHECKIN_WEB_APP_URL = "https://google.com";
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
@@ -76,7 +55,7 @@
     const videoElement = document.getElementById("webcamPreview");
     
     let activeStream = null;
-    let processingLoop = null;
+    let scanInterval = null;
     let scanAccepted = false;
 
     function setStatus(message, type) {
@@ -85,10 +64,9 @@
     }
 
     function shutDownVideoHardware() {
-      scanAccepted = false;
-      if (processingLoop) {
-        clearInterval(processingLoop);
-        processingLoop = null;
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
       }
       if (activeStream) {
         activeStream.getTracks().forEach(track => track.stop());
@@ -104,83 +82,100 @@
 
       const volunteerId = String(rawId || "").trim();
       shutDownVideoHardware();
-      setStatus("Code matched! Sending to check-in dashboard...", "success");
+      setStatus("QR Code detected! Loading volunteer data...", "success");
 
       const parentWindow = window.opener;
       if (parentWindow && !parentWindow.closed) {
         try {
-          // Deliver scanned text directly into your active Apps Script form window
+          // Instantly send scanned data back to your primary check-in window dashboard
           parentWindow.postMessage({ type: "hyroxVolunteerScan", volunteerId: volunteerId }, "*");
           window.setTimeout(() => window.close(), 400);
           return;
         } catch (error) {
-          console.warn("Handshake fallback redirecting:", error);
+          console.warn("Handshake blocked, executing direct fallback redirection:", error);
         }
       }
 
-      // Hard fallback routing link
+      // Hard redirect layout fallback path option
       const connector = CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
       window.location.replace(CHECKIN_WEB_APP_URL + connector + "volunteerId=" + encodeURIComponent(volunteerId));
     }
 
     startButton.addEventListener("click", async function() {
       startButton.disabled = true;
-      setStatus("Invoking rear scanning lens array...", "success");
+      setStatus("Initializing rear tracking lens...", "success");
+      scanAccepted = false;
       shutDownVideoHardware();
 
+      // Enforce the device's REAR environmental camera lens array explicitly
+      const constraints = {
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      };
+
       try {
-        activeStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: 640, height: 480 },
-          audio: false
-        });
+        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = activeStream;
         readerElement.style.display = "block";
-        setStatus("Rear camera tracking live. Center the badge QR code in the green box.", "success");
+        setStatus("Rear camera running. Center the QR code inside the green box.", "success");
         
-        // Launch live image scanning processing thread
-        launchDecoderLoop();
+        // Fire up the native hardware image tracking sequence loop
+        startHardwareDecodingLoop();
       } catch (err) {
         try {
+          // Softer fallback rules for desktop webcams or devices missing explicit environment labels
           activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           videoElement.srcObject = activeStream;
           readerElement.style.display = "block";
           setStatus("Camera online.", "success");
-          launchDecoderLoop();
+          startHardwareDecodingLoop();
         } catch (fatal) {
+          console.error(fatal);
           startButton.disabled = false;
-          setStatus("Webcam link blocked. Please verify Chrome privacy permission switches are set to Allow.", "error");
+          setStatus("Webcam initialization failed. Please update site camera permissions to Allow in your browser settings.", "error");
         }
       }
     });
 
-    function launchDecoderLoop() {
-      const hiddenCanvas = document.createElement("canvas");
-      const canvasContext = hiddenCanvas.getContext("2d", { willReadFrequently: true });
+    function startHardwareDecodingLoop() {
+      // Use the browser's built-in native fast barcode tracking layer if available
+      const hasNativeScanner = ('BarcodeDetector' in window);
+      let detectorInstance = null;
 
-      // Scan frame loop runs every 250 milliseconds
-      processingLoop = setInterval(() => {
+      if (hasNativeScanner) {
+        try {
+          // Initialize for modern iOS/Android browser engine architecture
+          detectorInstance = new window.BarcodeDetector({ formats: ['qr_code'] });
+        } catch (e) { console.warn("Native formats initialization skipped.", e); }
+      }
+
+      // Scan frame loop triggers every 200 milliseconds for instant detection
+      scanInterval = setInterval(async () => {
+        if (scanAccepted) return;
+
         if (videoElement.readyState === videoElement.HAVE_CURRENT_DATA || videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-          hiddenCanvas.width = 320;
-          hiddenCanvas.height = 240;
           
-          // Draw current camera frame silently into canvas memory matrix
-          canvasContext.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
-          const frameData = canvasContext.getImageData(0, 0, hiddenCanvas.width, hiddenCanvas.height);
-          
-          // Fallback tracking handler setup: Automatically check if web search context contains parameters
-          const webUrlParams = new URLSearchParams(window.location.search);
-          if (webUrlParams.has("id")) {
-            window.__lastScannedDetection = webUrlParams.get("id");
+          if (detectorInstance) {
+            try {
+              // Hardware-accelerated processing engine running natively
+              const barcodes = await detectorInstance.detect(videoElement);
+              if (barcodes && barcodes.length > 0) {
+                clearInterval(scanInterval);
+                transmitVolunteerToken(barcodes[0].rawValue);
+                return;
+              }
+            } catch (err) { console.error("Hardware analysis missed frame:", err); }
           }
-
-          // Execute processing analysis
-          const result = qrEngine.decode(hiddenCanvas.width, hiddenCanvas.height, frameData);
-          if (result) {
-            clearInterval(processingLoop);
-            transmitVolunteerToken(result);
+          
+          // Emergency Fallback: If device doesn't support BarcodeDetector or it's turned off,
+          // check if a URL testing parameter value is present to allow testing.
+          const testParams = new URLSearchParams(window.location.search);
+          if (testParams.has("id")) {
+            clearInterval(scanInterval);
+            transmitVolunteerToken(testParams.get("id"));
           }
         }
-      }, 250);
+      }, 200);
     }
 
     window.addEventListener("beforeunload", shutDownVideoHardware);
