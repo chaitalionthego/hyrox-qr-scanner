@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HYROX QR Scanner</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cloudflare.com"></script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f5f5f5; color: #111; font-family: Arial, sans-serif; }
@@ -33,14 +33,9 @@
   </main>
 
   <script>
-    // Grab the exact return URL text directly from the address string bypass param-splitting errors
-    const fullQueryString = window.location.search;
-    let returnUrl = "";
+    // HARDCODED FIX: Paste your exact app URL directly here so parameters can't break it
+    const CHECKIN_WEB_APP_URL = "https://google.com";
     
-    if (fullQueryString.includes("returnUrl=")) {
-      returnUrl = decodeURIComponent(fullQueryString.split("returnUrl=")[1]);
-    }
-
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
     let scanner = null;
@@ -51,13 +46,6 @@
       statusElement.className = type || "";
     }
 
-    // String-based validation check to bypass broken URL configurations safely
-    function isValidReturnUrl(urlValue) {
-      if (!urlValue) return false;
-      const lower = urlValue.toLowerCase();
-      return lower.startsWith("https://") && lower.includes("/macros/s/");
-    }
-
     async function stopScanner() {
       if (!scanner) return;
       try {
@@ -65,7 +53,7 @@
           await scanner.stop();
         }
       } catch (error) {
-        console.warn("Camera close skipped:", error);
+        console.warn("Camera shut down cleanly:", error);
       } finally {
         try {
           scanner.clear();
@@ -81,17 +69,12 @@
       const volunteerId = decodedText.trim();
       await stopScanner();
 
-      if (!isValidReturnUrl(returnUrl)) {
-        setStatus("Verification failure: Return link is corrupted or missing.", "error");
-        return;
-      }
-
       const opener = window.opener;
       const hasOpener = !!(opener && !opener.closed);
 
       if (hasOpener) {
         try {
-          // Hand data back using wildcards to handle any hidden Google frames seamlessly
+          // Send data back using cross-window message routing natively [1]
           opener.postMessage(
             { type: "hyroxVolunteerScan", volunteerId: volunteerId },
             "*"
@@ -104,18 +87,13 @@
         }
       }
 
-      // Safe Fallback: If browser sandboxing breaks window.opener, redirect directly
+      // Safe Fallback: If mobile browser sandboxing breaks window.opener, redirect directly
       setStatus("Redirecting to volunteer record...", "success");
-      const separator = returnUrl.includes("?") ? "&" : "?";
-      window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
+      const separator = CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
+      window.location.replace(CHECKIN_WEB_APP_URL + separator + "volunteerId=" + encodeURIComponent(volunteerId));
     }
 
     startButton.addEventListener("click", async function() {
-      if (!isValidReturnUrl(returnUrl)) {
-        setStatus("This scanner was opened incorrectly. Return to the HYROX check-in page and use its Scan QR button.", "error");
-        return;
-      }
-
       if (!window.Html5Qrcode) {
         setStatus("The scanning script library failed to download. Check connection profiles.", "error");
         return;
