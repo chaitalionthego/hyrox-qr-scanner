@@ -98,7 +98,7 @@
       window.location.replace(CHECKIN_WEB_APP_URL + separator + "volunteerId=" + encodeURIComponent(volunteerId));
     }
 
-    startButton.addEventListener("click", async function() {
+startButton.addEventListener("click", async function() {
   if (!window.Html5Qrcode) {
     setStatus("The scanning script library failed to download. Check connection profiles.", "error");
     return;
@@ -112,9 +112,8 @@
   document.getElementById("reader").innerHTML = "";
 
   try {
-    scanner = new Html5Qrcode("reader", {
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-    });
+    // FIXED: Initializing engine with default parameters to eliminate configuration variable definition crashes
+    scanner = new Html5Qrcode("reader");
 
     const cameras = await Html5Qrcode.getCameras();
     if (!cameras || cameras.length === 0) {
@@ -126,10 +125,9 @@
       /(back|rear|environment|surface)/i.test(camera.label || "")
     );
 
-    // FIX FOR DESKTOP USER ACCOUNTS: If no mobile rear-facing string is matched, 
-    // default directly to the very first available webcam option connected to the machine!
+    // Desktop mode check: if no environment lens string is matched, default to the active option
     if (!selectedCamera) {
-      console.log("No specific environment lens matched. Defaulting to available desktop device:", cameras[0].label);
+      console.log("Defaulting to standard system camera hardware layout.");
       selectedCamera = cameras[0];
     }
 
@@ -138,7 +136,6 @@
       { 
         fps: 15, 
         qrbox: function(viewfinderWidth, viewfinderHeight) {
-          // Responsive tracking boundary window constraints
           const dimension = Math.min(viewfinderWidth, viewfinderHeight) * 0.65;
           return { width: Math.max(dimension, 200), height: Math.max(dimension, 200) };
         }, 
@@ -152,14 +149,14 @@
     console.error("Hardware streaming fault exception detail trace:", error);
     startButton.disabled = false;
     
-    // Transparent technical diagnosis string injection
     setStatus(
-      "Webcam initialization failed. Verify device is plugged in or verify Chrome privacy choices. Details: " + 
+      "Webcam initialization failed. Verify your camera is plugged in. Details: " + 
       (error.message || error), 
       "error"
     );
   }
 });
+
 
 
     window.addEventListener("beforeunload", stopScanner);
