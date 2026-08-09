@@ -99,45 +99,68 @@
     }
 
     startButton.addEventListener("click", async function() {
-      if (!window.Html5Qrcode) {
-        setStatus("The scanning script library failed to download. Check connection profiles.", "error");
-        return;
-      }
+  if (!window.Html5Qrcode) {
+    setStatus("The scanning script library failed to download. Check connection profiles.", "error");
+    return;
+  }
 
-      startButton.disabled = true;
-      setStatus("Initializing camera...");
-      scanAccepted = false;
+  startButton.disabled = true;
+  setStatus("Initializing camera...");
+  scanAccepted = false;
 
-      await stopScanner();
-      document.getElementById("reader").innerHTML = "";
+  await stopScanner();
+  document.getElementById("reader").innerHTML = "";
 
-      try {
-        scanner = new Html5Qrcode("reader", {
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-        });
-
-        const cameras = await Html5Qrcode.getCameras();
-        if (!cameras || cameras.length === 0) {
-          throw new Error("No cameras found on this device.");
-        }
-
-        const rearCamera = cameras.find(camera =>
-          /(back|rear|environment|surface)/i.test(camera.label)
-        ) || cameras[cameras.length - 1];
-
-        await scanner.start(
-          rearCamera.id,
-          { fps: 12, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
-          onScanSuccess,
-          function() {}
-        );
-        setStatus("Camera ready. Scan the badge QR code.", "success");
-      } catch (error) {
-        console.error("Camera error:", error);
-        startButton.disabled = false;
-        setStatus("Camera access blocked. Reset app permissions in your browser and try again.", "error");
-      }
+  try {
+    scanner = new Html5Qrcode("reader", {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
     });
+
+    const cameras = await Html5Qrcode.getCameras();
+    if (!cameras || cameras.length === 0) {
+      throw new Error("No hardware video capture devices discovered on this computer build.");
+    }
+
+    // Try to find a phone/tablet rear camera first
+    let selectedCamera = cameras.find(camera =>
+      /(back|rear|environment|surface)/i.test(camera.label || "")
+    );
+
+    // FIX FOR DESKTOP USER ACCOUNTS: If no mobile rear-facing string is matched, 
+    // default directly to the very first available webcam option connected to the machine!
+    if (!selectedCamera) {
+      console.log("No specific environment lens matched. Defaulting to available desktop device:", cameras[0].label);
+      selectedCamera = cameras[0];
+    }
+
+    await scanner.start(
+      selectedCamera.id,
+      { 
+        fps: 15, 
+        qrbox: function(viewfinderWidth, viewfinderHeight) {
+          // Responsive tracking boundary window constraints
+          const dimension = Math.min(viewfinderWidth, viewfinderHeight) * 0.65;
+          return { width: Math.max(dimension, 200), height: Math.max(dimension, 200) };
+        }, 
+        aspectRatio: 1 
+      },
+      onScanSuccess,
+      function() {}
+    );
+    setStatus("Camera running live. Hold up your volunteer badge code to the webcam lens.", "success");
+  } catch (error) {
+    console.error("Hardware streaming fault exception detail trace:", error);
+    startButton.disabled = false;
+    
+    // Transparent technical diagnosis string injection
+    setStatus(
+      "Webcam initialization failed. Verify device is plugged in or verify Chrome privacy choices. Details: " + 
+      (error.message || error), 
+      "error"
+    );
+  }
+});
+
 
     window.addEventListener("beforeunload", stopScanner);
   </script>
