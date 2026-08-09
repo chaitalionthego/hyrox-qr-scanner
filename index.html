@@ -262,7 +262,35 @@ function transmitVolunteerToken(rawId) {
   );
 
   // ----------------------------------------------------------
-  // Get the check-in screen URL passed when scanner was opened
+  // Send the scanned Volunteer ID back to the window
+  // that opened this scanner.
+  // ----------------------------------------------------------
+
+  if (window.opener && !window.opener.closed) {
+
+    window.opener.postMessage(
+      {
+        type: "hyroxVolunteerScan",
+        volunteerId: volunteerId
+      },
+      "https://script.google.com"
+    );
+
+    console.log(
+      "Volunteer ID sent to check-in window:",
+      volunteerId
+    );
+
+    // Close scanner popup
+    setTimeout(function() {
+      window.close();
+    }, 300);
+
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // Fallback if scanner was NOT opened as a popup.
   // ----------------------------------------------------------
 
   const params =
@@ -273,48 +301,31 @@ function transmitVolunteerToken(rawId) {
   const returnUrl =
     params.get("returnUrl");
 
-  // ----------------------------------------------------------
-  // If we don't have a return URL, stop with a clear message
-  // ----------------------------------------------------------
+  if (returnUrl) {
 
-  if (!returnUrl) {
+    const connector =
+      returnUrl.includes("?")
+        ? "&"
+        : "?";
 
-    setStatus(
-      "Scanner was not opened from the check-in screen.",
-      "error"
-    );
+    const destination =
+      returnUrl +
+      connector +
+      "volunteerId=" +
+      encodeURIComponent(volunteerId);
 
-    scanAccepted = false;
+    window.location.href =
+      destination;
 
     return;
   }
 
-  // ----------------------------------------------------------
-  // Add Volunteer ID to the Apps Script check-in URL
-  // ----------------------------------------------------------
-
-  const connector =
-    returnUrl.includes("?")
-      ? "&"
-      : "?";
-
-  const destination =
-    returnUrl +
-    connector +
-    "volunteerId=" +
-    encodeURIComponent(volunteerId);
-
-  console.log(
-    "Returning to check-in:",
-    destination
+  setStatus(
+    "Scanner was not opened from the check-in screen.",
+    "error"
   );
 
-  // ----------------------------------------------------------
-  // Return directly to the check-in page
-  // ----------------------------------------------------------
-
-  window.location.href =
-    destination;
+  scanAccepted = false;
 }
 
 
