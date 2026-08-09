@@ -36,11 +36,8 @@
       <div id="status" aria-live="polite"></div>
     </div>
   </main>
-
   <script>
-    // HARDCODED FIX: Paste your exact app URL directly here so parameters can't break it
     const CHECKIN_WEB_APP_URL = "https://google.com";
-    
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
     let scanner = null;
@@ -53,113 +50,64 @@
 
     async function stopScanner() {
       if (!scanner) return;
-      try {
-        if (scanner.isScanning) {
-          await scanner.stop();
-        }
-      } catch (error) {
-        console.warn("Camera shut down cleanly:", error);
-      } finally {
-        try {
-          scanner.clear();
-        } catch(e) {}
-        scanner = null;
-      }
+      try { if (scanner.isScanning) { await scanner.stop(); } } catch (e) {}
+      try { scanner.clear(); } catch(e) {}
+      scanner = null;
     }
 
     async function onScanSuccess(decodedText) {
       if (scanAccepted) return;
       scanAccepted = true;
-
       const volunteerId = decodedText.trim();
       await stopScanner();
 
       const opener = window.opener;
-      const hasOpener = !!(opener && !opener.closed);
-
-      if (hasOpener) {
+      if (opener && !opener.closed) {
         try {
-          // Send data back using cross-window message routing natively [1]
-          opener.postMessage(
-            { type: "hyroxVolunteerScan", volunteerId: volunteerId },
-            "*"
-          );
-          setStatus("Scanned! Transferring to your check-in portal...", "success");
+          opener.postMessage({ type: "hyroxVolunteerScan", volunteerId: volunteerId }, "*");
+          setStatus("Scanned! Sent to your check-in screen.", "success");
           window.setTimeout(() => window.close(), 500);
           return;
-        } catch (error) {
-          console.warn("PostMessage failed, falling back to direct web redirect", error);
+        } catch (error) { console.warn(error); }
+      }
+      setStatus("Redirecting to volunteer record...", "success");
+      window.location.replace(CHECKIN_WEB_APP_URL + "?volunteerId=" + encodeURIComponent(volunteerId));
+    }
+
+    startButton.addEventListener("click", async function() {
+      startButton.disabled = true;
+      setStatus("Initializing camera...");
+      scanAccepted = false;
+      await stopScanner();
+      document.getElementById("reader").innerHTML = "";
+
+      try {
+        // Run safe check on the self-hosted constructor wrapper
+        const TargetConstructor = (window.Html5Qrcode && window.Html5Qrcode.Html5Qrcode) ? window.Html5Qrcode.Html5Qrcode : window.Html5Qrcode;
+        scanner = new TargetConstructor("reader");
+
+        const cameras = await TargetConstructor.getCameras();
+        if (!cameras || cameras.length === 0) throw new Error("No cameras found.");
+
+        let targetCam = cameras.find(c => /(back|rear|environment)/i.test(c.label || "")) || cameras[0];
+        await scanner.start(targetCam.id, { fps: 15 }, onScanSuccess, function() {});
+        setStatus("Camera running live. Hold badge up to lens.", "success");
+      } catch (error) {
+        console.error(error);
+        
+        // DESKTOP FALLBACK SIMULATOR: If camera hardware initialization errors out,
+        // display a prompt instantly so you can test data transfer to your spreadsheet!
+        const mockID = prompt("Camera stream blocked. Type a Volunteer ID string manually to simulate a scan:");
+        if (mockID) {
+          onScanSuccess(mockID);
+        } else {
+          startButton.disabled = false;
+          setStatus("Webcam link failed. Details: " + (error.message || error), "error");
         }
       }
-
-      // Safe Fallback: If mobile browser sandboxing breaks window.opener, redirect directly
-      setStatus("Redirecting to volunteer record...", "success");
-      const separator = CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
-      window.location.replace(CHECKIN_WEB_APP_URL + separator + "volunteerId=" + encodeURIComponent(volunteerId));
-    }
-
-startButton.addEventListener("click", async function() {
-  if (!window.Html5Qrcode) {
-    setStatus("The scanning script library failed to download. Check connection profiles.", "error");
-    return;
-  }
-
-  startButton.disabled = true;
-  setStatus("Initializing camera...");
-  scanAccepted = false;
-
-  await stopScanner();
-  document.getElementById("reader").innerHTML = "";
-
-  try {
-    // FIXED: Initializing engine with default parameters to eliminate configuration variable definition crashes
-    scanner = new Html5Qrcode("reader");
-
-    const cameras = await Html5Qrcode.getCameras();
-    if (!cameras || cameras.length === 0) {
-      throw new Error("No hardware video capture devices discovered on this computer build.");
-    }
-
-    // Try to find a phone/tablet rear camera first
-    let selectedCamera = cameras.find(camera =>
-      /(back|rear|environment|surface)/i.test(camera.label || "")
-    );
-
-    // Desktop mode check: if no environment lens string is matched, default to the active option
-    if (!selectedCamera) {
-      console.log("Defaulting to standard system camera hardware layout.");
-      selectedCamera = cameras[0];
-    }
-
-    await scanner.start(
-      selectedCamera.id,
-      { 
-        fps: 15, 
-        qrbox: function(viewfinderWidth, viewfinderHeight) {
-          const dimension = Math.min(viewfinderWidth, viewfinderHeight) * 0.65;
-          return { width: Math.max(dimension, 200), height: Math.max(dimension, 200) };
-        }, 
-        aspectRatio: 1 
-      },
-      onScanSuccess,
-      function() {}
-    );
-    setStatus("Camera running live. Hold up your volunteer badge code to the webcam lens.", "success");
-  } catch (error) {
-    console.error("Hardware streaming fault exception detail trace:", error);
-    startButton.disabled = false;
-    
-    setStatus(
-      "Webcam initialization failed. Verify your camera is plugged in. Details: " + 
-      (error.message || error), 
-      "error"
-    );
-  }
-});
-
-
-
+    });
     window.addEventListener("beforeunload", stopScanner);
   </script>
+
 </body>
 </html>
