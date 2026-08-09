@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HYROX QR Scanner</title>
-  <script src="https://cloudflare.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f5f5f5; color: #111; font-family: Arial, sans-serif; }
@@ -33,8 +33,14 @@
   </main>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const returnUrl = params.get("returnUrl");
+    // Grab the exact return URL text directly from the address string bypass param-splitting errors
+    const fullQueryString = window.location.search;
+    let returnUrl = "";
+    
+    if (fullQueryString.includes("returnUrl=")) {
+      returnUrl = decodeURIComponent(fullQueryString.split("returnUrl=")[1]);
+    }
+
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
     let scanner = null;
@@ -45,16 +51,11 @@
       statusElement.className = type || "";
     }
 
-    // FIXED: Relaxed structural validation to bypass Google's cross-origin routing blocks securely
+    // String-based validation check to bypass broken URL configurations safely
     function isValidReturnUrl(urlValue) {
-      try {
-        if (!urlValue) return false;
-        const url = new URL(urlValue);
-        // Ensure it is a secure connection and contains the standard Google macro execution path
-        return url.protocol === "https:" && url.pathname.toLowerCase().includes("/macros/s/");
-      } catch (error) {
-        return false;
-      }
+      if (!urlValue) return false;
+      const lower = urlValue.toLowerCase();
+      return lower.startsWith("https://") && lower.includes("/macros/s/");
     }
 
     async function stopScanner() {
@@ -64,7 +65,7 @@
           await scanner.stop();
         }
       } catch (error) {
-        console.warn("Unable to safely halt camera hardware stream", error);
+        console.warn("Camera close skipped:", error);
       } finally {
         try {
           scanner.clear();
@@ -90,7 +91,7 @@
 
       if (hasOpener) {
         try {
-          // Hand data back using cross-window message routing natively
+          // Hand data back using wildcards to handle any hidden Google frames seamlessly
           opener.postMessage(
             { type: "hyroxVolunteerScan", volunteerId: volunteerId },
             "*"
@@ -99,12 +100,12 @@
           window.setTimeout(() => window.close(), 500);
           return;
         } catch (error) {
-          console.warn("Target framing access refused, dropping into fallback redirect loop", error);
+          console.warn("PostMessage failed, falling back to direct web redirect", error);
         }
       }
 
-      // Fallback: If mobile browser sandboxing drops window connection state completely
-      setStatus("Direct link routing initiated. Syncing volunteer file...", "success");
+      // Safe Fallback: If browser sandboxing breaks window.opener, redirect directly
+      setStatus("Redirecting to volunteer record...", "success");
       const separator = returnUrl.includes("?") ? "&" : "?";
       window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
     }
@@ -121,7 +122,7 @@
       }
 
       startButton.disabled = true;
-      setStatus("Initializing camera array...");
+      setStatus("Initializing camera...");
       scanAccepted = false;
 
       await stopScanner();
@@ -134,7 +135,7 @@
 
         const cameras = await Html5Qrcode.getCameras();
         if (!cameras || cameras.length === 0) {
-          throw new Error("No video capture devices discovered on this hardware build.");
+          throw new Error("No cameras found on this device.");
         }
 
         const rearCamera = cameras.find(camera =>
@@ -147,14 +148,11 @@
           onScanSuccess,
           function() {}
         );
-        setStatus("Camera streaming live. Position the badge QR directly in frame.", "success");
+        setStatus("Camera ready. Scan the badge QR code.", "success");
       } catch (error) {
-        console.error("Hardware streaming fault exception:", error);
+        console.error("Camera error:", error);
         startButton.disabled = false;
-        setStatus(
-          "Camera access blocked. Reset application site permissions in your browser and try again.",
-          "error"
-        );
+        setStatus("Camera access blocked. Reset app permissions in your browser and try again.", "error");
       }
     });
 
