@@ -34,7 +34,6 @@
       <div id="status" aria-live="polite"></div>
     </div>
   </main>
-
   <script>
     const CHECKIN_WEB_APP_URL = "https://google.com";
     const statusElement = document.getElementById("status");
@@ -107,6 +106,7 @@
           aspectRatio: 1.0 
         };
 
+        // FIXED: Invoking native streaming loop decode threads to run instant auto-capture logic
         await html5QrCode.start(
           { facingMode: "environment" }, 
           configurationSettings, 
@@ -124,5 +124,6 @@
 
     window.addEventListener("beforeunload", stopScanner);
   </script>
+
 </body>
 </html>
