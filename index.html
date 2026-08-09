@@ -37,7 +37,7 @@
       <div id="status" aria-live="polite"></div>
     </div>
   </main>
-    <script>
+     <script>
     const CHECKIN_WEB_APP_URL = "https://google.com";
     const statusElement = document.getElementById("status");
     const startButton = document.getElementById("startButton");
@@ -77,38 +77,29 @@
 
     startButton.addEventListener("click", async function() {
       if (!window.Html5Qrcode) {
-        setStatus("Library failed to initialize cleanly.", "error");
+        setStatus("The file script engine failed to instantiate.", "error");
         return;
       }
       startButton.disabled = true;
-      setStatus("Initializing rear camera...");
+      setStatus("Initializing layout camera window...");
       scanAccepted = false;
       await stopScanner();
       document.getElementById("reader").innerHTML = "";
 
       try {
-        scanner = new Html5Qrcode("reader");
-
-        // BUG 1 FIX: Strictly command the hardware layer to invoke the environment/rear camera lens array
-        await scanner.start(
-          { facingMode: "environment" },
-          { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-          }, 
-          onScanSuccess, 
-          function() {}
-        );
-        setStatus("Camera running live. Point at the volunteer badge QR code.", "success");
+        // Launches the complete self-hosted wrapper cleanly
+        scanner = new window.Html5Qrcode("reader");
+        await scanner.start({}, {}, onScanSuccess, function() {});
+        setStatus("Scanner loaded successfully.", "success");
       } catch (error) {
         console.error(error);
         startButton.disabled = false;
-        setStatus("Camera access failed. Details: " + (error.message || error), "error");
+        setStatus("Launch error: " + (error.message || error), "error");
       }
     });
     window.addEventListener("beforeunload", stopScanner);
   </script>
+
 
 
 </body>
