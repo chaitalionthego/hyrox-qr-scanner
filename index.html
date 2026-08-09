@@ -243,11 +243,12 @@
     // SEND VOLUNTEER ID BACK TO MAIN CHECK-IN PAGE
     // ============================================================
 
-   function transmitVolunteerToken(rawId) {
+function transmitVolunteerToken(rawId) {
 
   if (scanAccepted) return;
 
-  const volunteerId = String(rawId || "").trim();
+  const volunteerId =
+    String(rawId || "").trim();
 
   if (!volunteerId) return;
 
@@ -256,37 +257,64 @@
   shutDownVideoHardware();
 
   setStatus(
-    "QR Code detected! Returning volunteer details...",
+    "QR Code detected! Returning to check-in...",
     "success"
   );
 
-  // Send scanned Volunteer ID back to the
-  // original Apps Script check-in window.
-  if (window.opener && !window.opener.closed) {
+  // ----------------------------------------------------------
+  // Get the check-in screen URL passed when scanner was opened
+  // ----------------------------------------------------------
 
-    window.opener.postMessage(
-      {
-        type: "hyroxVolunteerScan",
-        volunteerId: volunteerId
-      },
-      "*"
+  const params =
+    new URLSearchParams(
+      window.location.search
     );
 
-    // Close scanner after sending the ID
-    setTimeout(function() {
-      window.close();
-    }, 300);
+  const returnUrl =
+    params.get("returnUrl");
+
+  // ----------------------------------------------------------
+  // If we don't have a return URL, stop with a clear message
+  // ----------------------------------------------------------
+
+  if (!returnUrl) {
+
+    setStatus(
+      "Scanner was not opened from the check-in screen.",
+      "error"
+    );
+
+    scanAccepted = false;
 
     return;
   }
 
-  // If there is no opener, DO NOT silently fail.
-  setStatus(
-    "Scan successful, but the check-in screen could not be found. Please reopen the scanner from the check-in screen.",
-    "error"
+  // ----------------------------------------------------------
+  // Add Volunteer ID to the Apps Script check-in URL
+  // ----------------------------------------------------------
+
+  const connector =
+    returnUrl.includes("?")
+      ? "&"
+      : "?";
+
+  const destination =
+    returnUrl +
+    connector +
+    "volunteerId=" +
+    encodeURIComponent(volunteerId);
+
+  console.log(
+    "Returning to check-in:",
+    destination
   );
 
-  scanAccepted = false;
+  // ----------------------------------------------------------
+  // Return directly to the check-in page
+  // ----------------------------------------------------------
+
+  window.location.href =
+    destination;
 }
 
 
