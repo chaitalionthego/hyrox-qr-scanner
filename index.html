@@ -155,8 +155,7 @@
     // CONFIGURATION
     // ============================================================
 
-    const CHECKIN_WEB_APP_URL =
-      "https://script.google.com/macros/s/AKfycbwgzYdFGI53yPaGZ28CBu08yUB6UxOU6begFRgduaMxZzwUMIp3_llRJqHkDmHTjVC_/exec";
+    
 
 
     // ============================================================
@@ -244,7 +243,7 @@
     // SEND VOLUNTEER ID BACK TO MAIN CHECK-IN PAGE
     // ============================================================
 
-    function transmitVolunteerToken(rawId) {
+   function transmitVolunteerToken(rawId) {
 
   if (scanAccepted) return;
 
@@ -257,21 +256,37 @@
   shutDownVideoHardware();
 
   setStatus(
-    "QR Code detected! Loading volunteer data...",
+    "QR Code detected! Returning volunteer details...",
     "success"
   );
 
-  const connector =
-    CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
+  // Send scanned Volunteer ID back to the
+  // original Apps Script check-in window.
+  if (window.opener && !window.opener.closed) {
 
-  const returnUrl =
-    CHECKIN_WEB_APP_URL +
-    connector +
-    "volunteerId=" +
-    encodeURIComponent(volunteerId);
+    window.opener.postMessage(
+      {
+        type: "hyroxVolunteerScan",
+        volunteerId: volunteerId
+      },
+      "*"
+    );
 
-  // Return directly to the Apps Script check-in page.
-  window.location.replace(returnUrl);
+    // Close scanner after sending the ID
+    setTimeout(function() {
+      window.close();
+    }, 300);
+
+    return;
+  }
+
+  // If there is no opener, DO NOT silently fail.
+  setStatus(
+    "Scan successful, but the check-in screen could not be found. Please reopen the scanner from the check-in screen.",
+    "error"
+  );
+
+  scanAccepted = false;
 }
 
 
