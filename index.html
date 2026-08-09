@@ -4,22 +4,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HYROX QR Scanner</title>
-  <script src="https://cloudflare.com"></script>
+  
+  <!-- Primary CDN Endpoint -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  
+  <!-- Fail-Safe Backup Network Routing Routine -->
+  <script>
+    if (!window.Html5Qrcode) {
+      console.warn("Primary CDN failed. Attempting failover...");
+      document.write('<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\/script>');
+    }
+  </script>
+  <script>
+    if (!window.Html5Qrcode) {
+      console.warn("Secondary CDN failed. Attempting final failover...");
+      document.write('<script src="https://jsdelivr.net"><\/script>');
+    }
+  </script>
+
   <style>
+    /* Compact styling for HYROX scanner */
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f5f5f5; color: #111; font-family: Arial, sans-serif; }
-    main { max-width: 480px; margin: 0 auto; padding: 24px 18px; }
-    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 20px; }
-    h1 { font-size: 23px; margin: 0 0 10px; }
-    p { line-height: 1.45; }
-    button { width: 100%; border: 0; border-radius: 8px; padding: 14px; background: #111; color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; }
-    button:disabled { background: #888; cursor: not-allowed; }
-    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; }
-    #status { min-height: 24px; margin: 14px 0 0; font-weight: bold; }
-    .error { color: #b42318; }
-    .success { color: #18753a; }
+    body { margin: 0; background: #f5f5f5; font-family: sans-serif; }
+    main { max-width: 480px; margin: 0 auto; padding: 20px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; }
+    #reader { margin-top: 18px; border-radius: 8px; }
   </style>
 </head>
+
 <body>
   <main>
     <div class="card">
