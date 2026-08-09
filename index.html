@@ -80,47 +80,40 @@
         return;
       }
 
-      const separator = returnUrl.includes("?") ? "&" : "?";
-      const targetUrl = returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId);
-
-      // If this page was opened as a popup from the check-in app,
-      // window.opener points back at that main tab. Browsers allow a
-      // popup to navigate window.opener.location even cross-origin
-      // (only *reading* cross-origin window properties is blocked), so
-      // this updates the operator's main screen instead of the popup.
+      const targetOrigin = new URL(returnUrl).origin;
       const opener = window.opener;
       const hasOpener = !!(opener && !opener.closed);
 
-      setStatus(
-        hasOpener
-          ? "QR code scanned. Updating your check-in screen..."
-          : "QR code scanned. Opening the volunteer check-in record...",
-        "success"
-      );
+      if (hasOpener) {
 
-      window.setTimeout(() => {
+        // Hand the scanned ID directly to the already-open check-in tab
+        // via postMessage, so it updates in place — no reload, no URL
+        // change. window.opener.postMessage is allowed cross-origin even
+        // though most other access to a cross-origin window is blocked.
+        try {
 
-        if (hasOpener) {
+          opener.postMessage(
+            { type: "hyroxVolunteerScan", volunteerId: volunteerId },
+            targetOrigin
+          );
 
-          try {
-            opener.location.replace(targetUrl);
-            window.close();
-            return;
-          } catch (error) {
-            // Fall through to self-navigation if, for any reason, the
-            // opener can no longer be navigated (e.g. it was closed
-            // between the check above and now).
-            console.warn("Unable to update opener window, navigating scanner instead", error);
-          }
+          setStatus("QR code scanned. Sent to your check-in screen — you can close this window.", "success");
+          window.setTimeout(() => window.close(), 600);
+          return;
 
+        } catch (error) {
+          console.warn("Unable to message opener window, navigating scanner instead", error);
         }
 
-        // No opener available (scanner opened directly, not via the
-        // check-in app's popup) — fall back to navigating this window.
-        window.location.replace(targetUrl);
+      }
 
+      // No opener available (scanner opened directly, not via the
+      // check-in app's popup) — fall back to navigating this window.
+      setStatus("QR code scanned. Opening the volunteer check-in record...", "success");
+      const separator = returnUrl.includes("?") ? "&" : "?";
+      window.setTimeout(() => {
+        window.location.replace(returnUrl + separator + "volunteerId=" + encodeURIComponent(volunteerId));
       }, 400);
-
     }
 
     startButton.addEventListener("click", async function() {
