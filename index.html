@@ -479,59 +479,93 @@ function getEventDay() {
     // QR CODE FOUND
     // ============================================================
 
-    function transmitVolunteerToken(
-      rawId
-    ) {
+   function transmitVolunteerToken(rawId) {
 
-      if (scanAccepted) {
-        return;
-      }
+  if (scanAccepted) return;
 
+  const volunteerId =
+    String(rawId || "").trim();
 
-      const volunteerId =
-        String(
-          rawId || ""
-        ).trim();
+  if (!volunteerId) return;
 
+  scanAccepted = true;
 
-      if (!volunteerId) {
-        return;
-      }
+  shutDownVideoHardware();
 
+  setStatus(
+    "QR Code detected! Returning to check-in...",
+    "success"
+  );
 
-      // ----------------------------------------------------------
-      // Only accept HYROX volunteer IDs.
-      //
-      // Example:
-      // HYXMUM260010
-      // ----------------------------------------------------------
+  // ============================================================
+  // GET RETURN URL + EVENT DAY FROM SCANNER URL
+  // ============================================================
 
-      if (
-        !volunteerId
-          .toUpperCase()
-          .startsWith("HYXMUM26")
-      ) {
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
-        setStatus(
-          "This QR code is not a valid HYROX Mumbai volunteer QR code.",
-          "error"
-        );
+  const returnUrl =
+    params.get("returnUrl");
 
-        return;
-      }
+  const eventDay =
+    params.get("eventDay");
+
+  console.log("QR RESULT:", {
+    volunteerId: volunteerId,
+    returnUrl: returnUrl,
+    eventDay: eventDay
+  });
 
 
-      scanAccepted =
-        true;
+  // ============================================================
+  // VALIDATE RETURN URL
+  // ============================================================
+
+  if (!returnUrl) {
+
+    setStatus(
+      "Unable to find check-in page address. Please reopen the scanner.",
+      "error"
+    );
+
+    scanAccepted = false;
+
+    return;
+  }
 
 
-      shutDownVideoHardware();
+  // ============================================================
+  // BUILD RETURN URL
+  // ============================================================
+
+  const destination =
+    returnUrl +
+    (returnUrl.includes("?") ? "&" : "?") +
+    "volunteerId=" +
+    encodeURIComponent(volunteerId) +
+    "&eventDay=" +
+    encodeURIComponent(eventDay || "");
 
 
-      returnToCheckIn(
-        volunteerId
-      );
-    }
+  console.log(
+    "Returning to check-in page:",
+    destination
+  );
+
+
+  // ============================================================
+  // REDIRECT
+  // ============================================================
+
+  setTimeout(function() {
+
+    window.location.href =
+      destination;
+
+  }, 300);
+}
 
 
     // ============================================================
