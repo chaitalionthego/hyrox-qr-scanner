@@ -164,7 +164,13 @@
     // ============================================================
 
     const RETURN_URL_STORAGE_KEY =
-      "hyroxCheckInReturnUrl";
+  "hyroxCheckInReturnUrl";
+
+const CHECKIN_URL =
+  "https://script.google.com/macros/s/AKfycbxPtX-lbjUGHdxMpBu5LoGN1nlAgdXedBdYxyyIGtdZ8OMxwi4rLd_IMmqUd7V369o/exec";
+
+const EVENT_DAY_STORAGE_KEY =
+  "hyroxCheckInEventDay";
 
 
     // ============================================================
@@ -228,64 +234,115 @@
 
     function getReturnUrl() {
 
-      const params =
-        new URLSearchParams(
-          window.location.search
-        );
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
-      const urlReturn =
-        params.get("returnUrl");
+  // ----------------------------------------------------------
+  // 1. URL returnUrl
+  // ----------------------------------------------------------
+
+  const urlReturn =
+    params.get("returnUrl");
+
+  if (urlReturn) {
+
+    try {
+
+      localStorage.setItem(
+        RETURN_URL_STORAGE_KEY,
+        urlReturn
+      );
+
+      return urlReturn;
+
+    } catch (error) {
+
+      console.warn(
+        "Could not save return URL:",
+        error
+      );
+
+      return urlReturn;
+    }
+  }
 
 
-      // ----------------------------------------------------------
-      // If the check-in page supplied a return URL, save it.
-      // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // 2. localStorage
+  // ----------------------------------------------------------
 
-      if (urlReturn) {
+  try {
 
-        try {
+    const storedReturnUrl =
+      localStorage.getItem(
+        RETURN_URL_STORAGE_KEY
+      );
 
-          sessionStorage.setItem(
-            RETURN_URL_STORAGE_KEY,
-            urlReturn
-          );
-
-        } catch (error) {
-
-          console.warn(
-            "Unable to save return URL:",
-            error
-          );
-
-        }
-
-        return urlReturn;
-      }
-
-
-      // ----------------------------------------------------------
-      // Otherwise try the previously saved return URL.
-      // ----------------------------------------------------------
-
-      try {
-
-        return (
-          sessionStorage.getItem(
-            RETURN_URL_STORAGE_KEY
-          ) || ""
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "Unable to read stored return URL:",
-          error
-        );
-
-        return "";
-      }
+    if (storedReturnUrl) {
+      return storedReturnUrl;
     }
 
+  } catch (error) {
+
+    console.warn(
+      "localStorage unavailable:",
+      error
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // 3. HARD FALLBACK
+  // ----------------------------------------------------------
+
+  return CHECKIN_URL;
+}
+function getEventDay() {
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const urlEventDay =
+    params.get("eventDay");
+
+  if (urlEventDay) {
+
+    try {
+
+      localStorage.setItem(
+        EVENT_DAY_STORAGE_KEY,
+        urlEventDay
+      );
+
+    } catch (error) {
+
+      console.warn(
+        "Could not save event day:",
+        error
+      );
+    }
+
+    return urlEventDay;
+  }
+
+
+  try {
+
+    return (
+      localStorage.getItem(
+        EVENT_DAY_STORAGE_KEY
+      ) || ""
+    );
+
+  } catch (error) {
+
+    return "";
+  }
+}
 
     // ------------------------------------------------------------
     // IMPORTANT:
@@ -351,143 +408,71 @@
     // RETURN TO CHECK-IN PAGE
     // ============================================================
 
-    function returnToCheckIn(
-      volunteerId
-    ) {
+   function returnToCheckIn(volunteerId) {
 
-      const cleanVolunteerId =
-        String(
-          volunteerId || ""
-        ).trim();
+  const cleanVolunteerId =
+    String(volunteerId || "").trim();
 
+  if (!cleanVolunteerId) {
+    return false;
+  }
 
-      if (!cleanVolunteerId) {
+  const returnUrl =
+    getReturnUrl();
 
-        console.error(
-          "No Volunteer ID received."
-        );
+  const eventDay =
+    getEventDay();
 
-        return false;
-      }
+  try {
 
+    const destinationUrl =
+      new URL(returnUrl);
 
-      // ----------------------------------------------------------
-      // Get the stored return URL.
-      // ----------------------------------------------------------
+    destinationUrl.searchParams.set(
+      "volunteerId",
+      cleanVolunteerId
+    );
 
-      let returnUrl =
-        RETURN_URL;
+    if (eventDay) {
 
+      destinationUrl.searchParams.set(
+        "eventDay",
+        eventDay
+      );
 
-      if (!returnUrl) {
-
-        returnUrl =
-          getReturnUrl();
-
-      }
-
-
-      // ----------------------------------------------------------
-      // If no return URL exists, tell the user.
-      //
-      // This should NOT happen during the normal flow.
-      // ----------------------------------------------------------
-
-      if (!returnUrl) {
-
-        setStatus(
-          "Unable to find the check-in page address. Please reopen the scanner.",
-          "error"
-        );
-
-        console.error(
-          "HYROX scanner: RETURN URL MISSING"
-        );
-
-        scanAccepted =
-          false;
-
-        return false;
-      }
-
-
-      try {
-
-        const destinationUrl =
-          new URL(returnUrl);
-
-
-        // --------------------------------------------------------
-        // Add Volunteer ID.
-        // --------------------------------------------------------
-
-        destinationUrl.searchParams.set(
-          "volunteerId",
-          cleanVolunteerId
-        );
-
-
-        // --------------------------------------------------------
-        // IMPORTANT:
-        //
-        // The return URL already contains the eventDay selected
-        // on the check-in page.
-        //
-        // We therefore DO NOT replace eventDay here.
-        // --------------------------------------------------------
-
-        const destination =
-          destinationUrl.toString();
-
-
-        console.log(
-          "Returning to check-in page:",
-          destination
-        );
-
-
-        setStatus(
-          "QR Code detected! Returning to check-in...",
-          "success"
-        );
-
-
-        // --------------------------------------------------------
-        // Replace scanner page with check-in page.
-        //
-        // replace() is more reliable than assigning location on
-        // iPhone because it prevents the scanner from remaining
-        // in browser history.
-        // --------------------------------------------------------
-
-        window.location.replace(
-          destination
-        );
-
-
-        return true;
-
-      } catch (error) {
-
-        console.error(
-          "Invalid return URL:",
-          error
-        );
-
-
-        setStatus(
-          "The check-in page address is invalid.",
-          "error"
-        );
-
-
-        scanAccepted =
-          false;
-
-
-        return false;
-      }
     }
+
+    const destination =
+      destinationUrl.toString();
+
+    console.log(
+      "Returning to check-in:",
+      destination
+    );
+
+    window.location.replace(
+      destination
+    );
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "Could not create check-in URL:",
+      error
+    );
+
+    setStatus(
+      "Unable to create the check-in page address.",
+      "error"
+    );
+
+    scanAccepted = false;
+
+    return false;
+  }
+}
 
 
     // ============================================================
