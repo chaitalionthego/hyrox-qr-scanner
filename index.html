@@ -427,123 +427,58 @@
     // SEND RESULT TO CHECK-IN PAGE
     // ============================================================
 
-    function transmitVolunteerToken(
-      rawId
-    ) {
+ function transmitVolunteerToken(rawId) {
 
-      if (scanAccepted) {
+  if (scanAccepted) return;
 
-        return;
+  const volunteerId =
+    String(rawId || "").trim();
 
-      }
+  if (!volunteerId) return;
 
+  scanAccepted = true;
 
-      const volunteerId =
-        String(
-          rawId || ""
-        ).trim();
+  shutDownVideoHardware();
 
+  setStatus(
+    "QR Code detected! Returning to check-in...",
+    "success"
+  );
 
-      if (!volunteerId) {
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
-        return;
+  const returnUrl =
+    params.get("returnUrl");
 
-      }
+  if (returnUrl) {
 
+    const connector =
+      returnUrl.includes("?")
+        ? "&"
+        : "?";
 
-      scanAccepted =
-        true;
+    const destination =
+      returnUrl +
+      connector +
+      "volunteerId=" +
+      encodeURIComponent(volunteerId);
 
+    window.location.href =
+      destination;
 
-      shutDownVideoHardware();
+    return;
+  }
 
+  setStatus(
+    "Scanner was not opened from the check-in screen.",
+    "error"
+  );
 
-      setStatus(
-        "QR Code detected! Returning to check-in...",
-        "success"
-      );
-
-
-      /*
-        The scanner was opened by the
-        Apps Script check-in page.
-
-        Send the ID directly back to that
-        page.
-
-        NO REDIRECT.
-        NO NEW CHECK-IN PAGE.
-      */
-
-      if (
-        window.opener &&
-        !window.opener.closed
-      ) {
-
-        window.opener.postMessage(
-
-          {
-
-            type:
-              "hyroxVolunteerScan",
-
-            volunteerId:
-              volunteerId,
-
-            eventDay:
-              selectedEventDay
-
-          },
-
-          "*"
-
-        );
-
-
-        console.log(
-          "Sent QR result to check-in page:",
-          {
-            volunteerId:
-              volunteerId,
-
-            eventDay:
-              selectedEventDay
-          }
-        );
-
-
-        setTimeout(
-          function() {
-
-            window.close();
-
-          },
-          500
-        );
-
-
-        return;
-
-      }
-
-
-      /*
-        If there is no opener, this scanner
-        was opened directly.
-
-        Do NOT attempt to redirect.
-      */
-
-      setStatus(
-        "Please open the scanner from the HYROX check-in screen.",
-        "error"
-      );
-
-
-      scanAccepted =
-        false;
-
-    }
+  scanAccepted = false;
+}
 
 
     // ============================================================
