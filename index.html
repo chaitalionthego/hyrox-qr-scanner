@@ -1,908 +1,184 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-
   <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
-
-  <title>
-    HYROX QR Scanner
-  </title>
-
-
-  <!-- jsQR -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
-  ></script>
-
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HYROX QR Scanner</title>
   <style>
-
-    * {
-      box-sizing: border-box;
-    }
-
-
-    body {
-
-      margin: 0;
-
-      background: #f5f5f5;
-
-      color: #111;
-
-      font-family:
-        Arial,
-        sans-serif;
-    }
-
-
-    main {
-
-      max-width: 480px;
-
-      margin: 0 auto;
-
-      padding:
-        24px 18px;
-    }
-
-
-    .card {
-
-      background: #fff;
-
-      border-radius: 12px;
-
-      box-shadow:
-        0 2px 8px
-        rgba(0, 0, 0, .08);
-
-      padding: 20px;
-    }
-
-
-    h1 {
-
-      font-size: 23px;
-
-      margin:
-        0 0 10px;
-    }
-
-
-    p {
-
-      line-height: 1.45;
-    }
-
-
-    button {
-
-      width: 100%;
-
-      border: 0;
-
-      border-radius: 8px;
-
-      padding: 14px;
-
-      background: #111;
-
-      color: #fff;
-
-      cursor: pointer;
-
-      font-size: 16px;
-
-      font-weight: bold;
-    }
-
-
-    button:disabled {
-
-      background: #888;
-
-      cursor: not-allowed;
-    }
-
-
-    #reader {
-
-      margin-top: 18px;
-
-      overflow: hidden;
-
-      border-radius: 8px;
-
-      background: #000;
-
-      display: none;
-
-      position: relative;
-    }
-
-
-    video {
-
-      width: 100%;
-
-      height: auto;
-
-      display: block;
-
-      background: #000;
-    }
-
-
-    #status {
-
-      min-height: 24px;
-
-      margin:
-        14px 0 0;
-
-      font-weight: bold;
-    }
-
-
-    .error {
-
-      color: #b42318;
-    }
-
-
-    .success {
-
-      color: #18753a;
-    }
-
-
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f5f5; color: #111; font-family: Arial, sans-serif; }
+    main { max-width: 480px; margin: 0 auto; padding: 24px 18px; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 20px; }
+    h1 { font-size: 23px; margin: 0 0 10px; }
+    p { line-height: 1.45; }
+    button { width: 100%; border: 0; border-radius: 8px; padding: 14px; background: #111; color: #fff; cursor: pointer; font-size: 16px; font-weight: bold; }
+    button:disabled { background: #888; cursor: not-allowed; }
+    #reader { margin-top: 18px; overflow: hidden; border-radius: 8px; background: #000; display: none; position: relative; }
+    video { width: 100%; height: auto; display: block; background: #000; }
+    #status { min-height: 24px; margin: 14px 0 0; font-weight: bold; }
+    .error { color: #b42318; }
+    .success { color: #18753a; }
+    
+    /* Green target bounding overlay box */
     .scan-region-highlight {
-
-      position: absolute;
-
-      left: 50%;
-
-      top: 50%;
-
-      transform:
-        translate(
-          -50%,
-          -50%
-        );
-
-      width: 220px;
-
-      height: 220px;
-
-      border:
-        4px solid #1c8c3a;
-
-      border-radius: 12px;
-
-      box-shadow:
-        0 0 0 2000px
-        rgba(0, 0, 0, 0.5);
-
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px; height: 220px;
+      border: 4px solid #1c8c3a; border-radius: 12px;
+      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.5);
       pointer-events: none;
     }
-
-
-    #scanCanvas {
-
-      display: none;
-    }
-
   </style>
-
 </head>
-
-
 <body>
-
   <main>
-
     <div class="card">
+      <h1>HYROX Volunteer QR Scan</h1>
+      <p>Point the rear camera at the volunteer's QR code. The Volunteer ID will be sent back to the check-in page automatically.</p>
 
-      <h1>
-        HYROX Volunteer QR Scan
-      </h1>
-
-
-      <p>
-        Point the rear camera at the volunteer's QR code.
-        The Volunteer ID will be sent back to the check-in
-        page automatically.
-      </p>
-
-
-      <button
-        id="startButton"
-        type="button"
-      >
-        Start Camera
-      </button>
-
-
+      <button id="startButton" type="button">Start Camera</button>
+      
       <div id="reader">
-
-        <video
-          id="webcamPreview"
-          autoplay
-          playsinline
-          muted
-        ></video>
-
-
-        <div
-          class="scan-region-highlight"
-        ></div>
-
+        <video id="webcamPreview" autoplay playsinline muted></video>
+        <div class="scan-region-highlight"></div>
       </div>
 
-
-      <canvas
-        id="scanCanvas"
-      ></canvas>
-
-
-      <div
-        id="status"
-        aria-live="polite"
-      ></div>
-
+      <div id="status" aria-live="polite"></div>
     </div>
-
   </main>
 
-
   <script>
+    const CHECKIN_WEB_APP_URL = "https://google.com";
+    const statusElement = document.getElementById("status");
+    const startButton = document.getElementById("startButton");
+    const readerElement = document.getElementById("reader");
+    const videoElement = document.getElementById("webcamPreview");
+    
+    let activeStream = null;
+    let scanInterval = null;
+    let scanAccepted = false;
 
-    // ============================================================
-    // DOM
-    // ============================================================
-
-    const statusElement =
-      document.getElementById(
-        "status"
-      );
-
-
-    const startButton =
-      document.getElementById(
-        "startButton"
-      );
-
-
-    const readerElement =
-      document.getElementById(
-        "reader"
-      );
-
-
-    const videoElement =
-      document.getElementById(
-        "webcamPreview"
-      );
-
-
-    const canvasElement =
-      document.getElementById(
-        "scanCanvas"
-      );
-
-
-    const canvasContext =
-      canvasElement.getContext(
-        "2d",
-        {
-          willReadFrequently: true
-        }
-      );
-
-
-    // ============================================================
-    // STATE
-    // ============================================================
-
-    let activeStream =
-      null;
-
-
-    let scanInterval =
-      null;
-
-
-    let scanAccepted =
-      false;
-
-
-    let nativeDetector =
-      null;
-
-
-    // ============================================================
-    // STATUS
-    // ============================================================
-
-    function setStatus(
-      message,
-      type
-    ) {
-
-      statusElement.textContent =
-        message;
-
-      statusElement.className =
-        type || "";
+    function setStatus(message, type) {
+      statusElement.textContent = message;
+      statusElement.className = type || "";
     }
-
-
-    // ============================================================
-    // STOP CAMERA
-    // ============================================================
 
     function shutDownVideoHardware() {
-
       if (scanInterval) {
-
-        clearInterval(
-          scanInterval
-        );
-
-        scanInterval =
-          null;
+        clearInterval(scanInterval);
+        scanInterval = null;
       }
-
-
       if (activeStream) {
-
-        activeStream
-          .getTracks()
-          .forEach(
-            track =>
-              track.stop()
-          );
-
-        activeStream =
-          null;
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
       }
-
-
-      videoElement.srcObject =
-        null;
-
-
-      readerElement.style.display =
-        "none";
+      videoElement.srcObject = null;
+      readerElement.style.display = "none";
     }
-
-
-    // ============================================================
-    // SEND QR RESULT
-    // ============================================================
-    // Relayed through the check-in app's server (via a plain HTTP
-    // request) rather than window.opener/postMessage — Apps Script
-    // serves that app inside its own sandboxed iframe on a different
-    // origin than the top-level script.google.com URL, so postMessage
-    // would need to target an origin we can't reliably know, and
-    // silently fails to deliver if it's wrong. A server round-trip
-    // sidesteps all of that: it always reaches the same backend
-    // regardless of any window/iframe relationship.
 
     function transmitVolunteerToken(rawId) {
-
-      if (scanAccepted) {
-        return;
-      }
-
-      const volunteerId =
-        String(rawId || "").trim();
-
-      if (!volunteerId) {
-        return;
-      }
-
+      if (scanAccepted) return;
       scanAccepted = true;
 
+      const volunteerId = String(rawId || "").trim();
+      shutDownVideoHardware();
+      setStatus("QR Code detected! Loading volunteer data...", "success");
+
+      const parentWindow = window.opener;
+      if (parentWindow && !parentWindow.closed) {
+        try {
+          // Instantly send scanned data back to your primary check-in window dashboard
+          parentWindow.postMessage({ type: "hyroxVolunteerScan", volunteerId: volunteerId }, "*");
+          window.setTimeout(() => window.close(), 400);
+          return;
+        } catch (error) {
+          console.warn("Handshake blocked, executing direct fallback redirection:", error);
+        }
+      }
+
+      // Hard redirect layout fallback path option
+      const connector = CHECKIN_WEB_APP_URL.includes("?") ? "&" : "?";
+      window.location.replace(CHECKIN_WEB_APP_URL + connector + "volunteerId=" + encodeURIComponent(volunteerId));
+    }
+
+    startButton.addEventListener("click", async function() {
+      startButton.disabled = true;
+      setStatus("Initializing rear tracking lens...", "success");
+      scanAccepted = false;
       shutDownVideoHardware();
 
-      const scannerParams =
-        new URLSearchParams(window.location.search);
+      // Enforce the device's REAR environmental camera lens array explicitly
+      const constraints = {
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      };
 
-      const eventDay =
-        scannerParams.get("eventDay") || "";
-
-      const returnUrl =
-        scannerParams.get("returnUrl");
-
-      const sessionToken =
-        scannerParams.get("sessionToken");
-
-      console.log("Scanned Volunteer ID:", volunteerId);
-      console.log("Event Day:", eventDay);
-
-      if (!returnUrl || !sessionToken) {
-
-        setStatus(
-          "This scanner was opened incorrectly. Return to the HYROX check-in page and use its Scan QR button.",
-          "error"
-        );
-
-        scanAccepted = false;
-        return;
-      }
-
-      const relayUrl =
-        returnUrl +
-        (returnUrl.includes("?") ? "&" : "?") +
-        "action=recordScan" +
-        "&sessionToken=" + encodeURIComponent(sessionToken) +
-        "&volunteerId=" + encodeURIComponent(volunteerId) +
-        "&eventDay=" + encodeURIComponent(eventDay);
-
-      setStatus("QR code detected. Sending to your check-in screen...", "success");
-
-      // no-cors: we don't need to read the response, only trigger it —
-      // Apps Script doesn't need to send CORS headers back for the
-      // request itself to be received and processed server-side.
-      fetch(relayUrl, { method: "GET", mode: "no-cors" })
-        .then(function() {
-
-          setStatus(
-            "Sent to your check-in screen. You can close this window.",
-            "success"
-          );
-
-          window.setTimeout(function() {
-            window.close();
-          }, 800);
-
-        })
-        .catch(function(error) {
-
-          console.error("Failed to relay scan to check-in app", error);
-
-          setStatus(
-            "Scanned, but couldn't reach the check-in app. Check your connection and try again.",
-            "error"
-          );
-
-          scanAccepted = false;
-
-        });
-
-    }
-
-
-    // ============================================================
-    // START CAMERA
-    // ============================================================
-
-    startButton.addEventListener(
-      "click",
-      async function() {
-
-        startButton.disabled =
-          true;
-
-
-        setStatus(
-          "Initializing rear camera...",
-          "success"
-        );
-
-
-        scanAccepted =
-          false;
-
-
-        shutDownVideoHardware();
-
-
-        const constraints = {
-
-          video: {
-
-            facingMode: {
-              ideal: "environment"
-            },
-
-            width: {
-              ideal: 1280
-            },
-
-            height: {
-              ideal: 720
-            }
-
-          },
-
-          audio: false
-
-        };
-
-
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoElement.srcObject = activeStream;
+        readerElement.style.display = "block";
+        setStatus("Rear camera running. Center the QR code inside the green box.", "success");
+        
+        // Fire up the native hardware image tracking sequence loop
+        startHardwareDecodingLoop();
+      } catch (err) {
         try {
-
-          activeStream =
-            await navigator
-              .mediaDevices
-              .getUserMedia(
-                constraints
-              );
-
-
-          videoElement.srcObject =
-            activeStream;
-
-
-          readerElement.style.display =
-            "block";
-
-
-          setStatus(
-            "Rear camera running. Center the QR code inside the green box.",
-            "success"
-          );
-
-
-          await videoElement.play();
-
-
-          initializeQrDecoder();
-
-
-        } catch (error) {
-
-          console.error(
-            "Rear camera failed:",
-            error
-          );
-
-
-          // ------------------------------------------------------
-          // FALLBACK CAMERA
-          // ------------------------------------------------------
-
-          try {
-
-            activeStream =
-              await navigator
-                .mediaDevices
-                .getUserMedia({
-
-                  video: true,
-
-                  audio: false
-
-                });
-
-
-            videoElement.srcObject =
-              activeStream;
-
-
-            readerElement.style.display =
-              "block";
-
-
-            setStatus(
-              "Camera online. Center the QR code inside the green box.",
-              "success"
-            );
-
-
-            await videoElement.play();
-
-
-            initializeQrDecoder();
-
-
-          } catch (fatal) {
-
-            console.error(
-              "Camera initialization failed:",
-              fatal
-            );
-
-
-            startButton.disabled =
-              false;
-
-
-            setStatus(
-              "Camera access failed. Please allow camera access in your browser settings and try again.",
-              "error"
-            );
-          }
+          // Softer fallback rules for desktop webcams or devices missing explicit environment labels
+          activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          videoElement.srcObject = activeStream;
+          readerElement.style.display = "block";
+          setStatus("Camera online.", "success");
+          startHardwareDecodingLoop();
+        } catch (fatal) {
+          console.error(fatal);
+          startButton.disabled = false;
+          setStatus("Webcam initialization failed. Please update site camera permissions to Allow in your browser settings.", "error");
         }
       }
-    );
+    });
 
+    function startHardwareDecodingLoop() {
+      // Use the browser's built-in native fast barcode tracking layer if available
+      const hasNativeScanner = ('BarcodeDetector' in window);
+      let detectorInstance = null;
 
-    // ============================================================
-    // QR DECODER
-    // ============================================================
-
-    function initializeQrDecoder() {
-
-      nativeDetector =
-        null;
-
-
-      if (
-        "BarcodeDetector" in window
-      ) {
-
+      if (hasNativeScanner) {
         try {
-
-          nativeDetector =
-            new window.BarcodeDetector({
-
-              formats: [
-                "qr_code"
-              ]
-
-            });
-
-
-        } catch (error) {
-
-          console.warn(
-            "BarcodeDetector unavailable.",
-            error
-          );
-
-
-          nativeDetector =
-            null;
-        }
+          // Initialize for modern iOS/Android browser engine architecture
+          detectorInstance = new window.BarcodeDetector({ formats: ['qr_code'] });
+        } catch (e) { console.warn("Native formats initialization skipped.", e); }
       }
 
+      // Scan frame loop triggers every 200 milliseconds for instant detection
+      scanInterval = setInterval(async () => {
+        if (scanAccepted) return;
 
-      startScanningLoop();
-    }
-
-
-    // ============================================================
-    // SCANNING LOOP
-    // ============================================================
-
-    function startScanningLoop() {
-
-      if (scanInterval) {
-
-        clearInterval(
-          scanInterval
-        );
-      }
-
-
-      scanInterval =
-        setInterval(
-
-          async function() {
-
-            if (scanAccepted) {
-              return;
-            }
-
-
-            if (
-              videoElement.readyState <
-              videoElement.HAVE_CURRENT_DATA
-            ) {
-
-              return;
-            }
-
-
-            // ----------------------------------------------------
-            // NATIVE DETECTOR
-            // ----------------------------------------------------
-
-            if (nativeDetector) {
-
-              try {
-
-                const barcodes =
-                  await nativeDetector.detect(
-                    videoElement
-                  );
-
-
-                if (
-                  barcodes &&
-                  barcodes.length > 0
-                ) {
-
-                  transmitVolunteerToken(
-                    barcodes[0].rawValue
-                  );
-
-
-                  return;
-                }
-
-
-              } catch (error) {
-
-                console.warn(
-                  "Native QR detection failed.",
-                  error
-                );
+        if (videoElement.readyState === videoElement.HAVE_CURRENT_DATA || videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+          
+          if (detectorInstance) {
+            try {
+              // Hardware-accelerated processing engine running natively
+              const barcodes = await detectorInstance.detect(videoElement);
+              if (barcodes && barcodes.length > 0) {
+                clearInterval(scanInterval);
+                transmitVolunteerToken(barcodes[0].rawValue);
+                return;
               }
-            }
-
-
-            // ----------------------------------------------------
-            // jsQR FALLBACK
-            // ----------------------------------------------------
-
-            if (
-              typeof jsQR ===
-              "function"
-            ) {
-
-              try {
-
-                scanWithJsQr();
-
-              } catch (error) {
-
-                console.warn(
-                  "jsQR scanning failed.",
-                  error
-                );
-              }
-            }
-
-          },
-
-          200
-        );
-    }
-
-
-    // ============================================================
-    // jsQR
-    // ============================================================
-
-    function scanWithJsQr() {
-
-      const width =
-        videoElement.videoWidth;
-
-
-      const height =
-        videoElement.videoHeight;
-
-
-      if (
-        !width ||
-        !height
-      ) {
-
-        return;
-      }
-
-
-      canvasElement.width =
-        width;
-
-
-      canvasElement.height =
-        height;
-
-
-      canvasContext.drawImage(
-        videoElement,
-        0,
-        0,
-        width,
-        height
-      );
-
-
-      const imageData =
-        canvasContext.getImageData(
-          0,
-          0,
-          width,
-          height
-        );
-
-
-      const code =
-        jsQR(
-
-          imageData.data,
-
-          imageData.width,
-
-          imageData.height,
-
-          {
-            inversionAttempts:
-              "attemptBoth"
+            } catch (err) { console.error("Hardware analysis missed frame:", err); }
           }
-
-        );
-
-
-      if (
-        code &&
-        code.data
-      ) {
-
-        transmitVolunteerToken(
-          code.data
-        );
-      }
+          
+          // Emergency Fallback: If device doesn't support BarcodeDetector or it's turned off,
+          // check if a URL testing parameter value is present to allow testing.
+          const testParams = new URLSearchParams(window.location.search);
+          if (testParams.has("id")) {
+            clearInterval(scanInterval);
+            transmitVolunteerToken(testParams.get("id"));
+          }
+        }
+      }, 200);
     }
 
-
-    // ============================================================
-    // TESTING
-    // ============================================================
-    //
-    // Example (needs a real returnUrl + sessionToken to actually
-    // relay anywhere — this only simulates the "scanned" step):
-    //
-    // ?id=HYXMUM260001&returnUrl=...&sessionToken=...&eventDay=18%20September
-    //
-    // ============================================================
-
-    const testParams =
-      new URLSearchParams(
-        window.location.search
-      );
-
-
-    if (
-      testParams.has("id")
-    ) {
-
-      const testVolunteerId =
-        testParams.get("id");
-
-
-      if (testVolunteerId) {
-
-        window.setTimeout(
-
-          function() {
-
-            transmitVolunteerToken(
-              testVolunteerId
-            );
-
-          },
-
-          500
-        );
-      }
-    }
-
-
-    // ============================================================
-    // CLEANUP
-    // ============================================================
-
-    window.addEventListener(
-      "beforeunload",
-      shutDownVideoHardware
-    );
-
+    window.addEventListener("beforeunload", shutDownVideoHardware);
   </script>
-
 </body>
-
 </html>
