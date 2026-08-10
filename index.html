@@ -587,79 +587,61 @@
     // QR CODE FOUND
     // ============================================================
 
-    function transmitVolunteerToken(
-      rawId
-    ) {
+  function transmitVolunteerToken(rawId) {
 
-      if (scanAccepted) {
+  if (scanAccepted) {
+    return;
+  }
 
-        return;
+  const volunteerId =
+    String(rawId || "").trim();
 
-      }
+  if (!volunteerId) {
+    return;
+  }
 
+  scanAccepted = true;
 
-      const volunteerId =
-        String(
-          rawId || ""
-        ).trim();
+  shutDownVideoHardware();
 
+  setStatus(
+    "QR Code detected! Returning to check-in...",
+    "success"
+  );
 
-      if (!volunteerId) {
+  console.log("QR RESULT:", {
+    volunteerId: volunteerId,
+    returnUrl: getReturnUrl(),
+    eventDay: getEventDay()
+  });
 
-        return;
+  /*
+    IMPORTANT:
 
-      }
+    Do NOT read returnUrl directly from
+    window.location.search here.
 
+    On iPhone the scanner page can reload.
+    getReturnUrl() already handles:
 
-      scanAccepted =
-        true;
+    1. Current URL
+    2. localStorage
+    3. Check-in URL fallback
+  */
 
+  const success =
+    returnToCheckIn(volunteerId);
 
-      shutDownVideoHardware();
+  if (!success) {
 
+    scanAccepted = false;
 
-      setStatus(
-        "QR Code detected! Returning to check-in...",
-        "success"
-      );
-
-
-      /*
-        IMPORTANT FIX:
-
-        Do NOT read returnUrl directly from
-        window.location.search here.
-
-        On iPhone the page can reload.
-
-        getReturnUrl() inside returnToCheckIn()
-        handles both the current URL and localStorage.
-      */
-
-      console.log(
-        "QR RESULT:",
-        {
-          volunteerId:
-            volunteerId,
-
-          returnUrl:
-            getReturnUrl(),
-
-          eventDay:
-            getEventDay()
-        }
-      );
-
-
-      /*
-        Use the single, centralized return function.
-      */
-
-      returnToCheckIn(
-        volunteerId
-      );
-
-    }
+    setStatus(
+      "Unable to find the check-in page. Please reopen the scanner from the check-in page.",
+      "error"
+    );
+  }
+}
 
 
     // ============================================================
