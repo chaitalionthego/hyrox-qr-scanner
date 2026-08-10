@@ -387,8 +387,16 @@
     // ============================================================
     // SEND QR RESULT
     // ============================================================
+    // Relayed through the check-in app's server (via a plain HTTP
+    // request) rather than window.opener/postMessage — Apps Script
+    // serves that app inside its own sandboxed iframe on a different
+    // origin than the top-level script.google.com URL, so postMessage
+    // would need to target an origin we can't reliably know, and
+    // silently fails to deliver if it's wrong. A server round-trip
+    // sidesteps all of that: it always reaches the same backend
+    // regardless of any window/iframe relationship.
 
-function transmitVolunteerToken(rawId) {
+    function transmitVolunteerToken(rawId) {
 
       if (scanAccepted) {
         return;
@@ -405,82 +413,71 @@ function transmitVolunteerToken(rawId) {
 
       shutDownVideoHardware();
 
-      setStatus(
-        "QR Code detected! Returning to check-in...",
-        "success"
-      );
-
-      // ----------------------------------------------------------
-      // Get Event Day that was passed from check-in page
-      // ----------------------------------------------------------
-
       const scannerParams =
         new URLSearchParams(window.location.search);
 
       const eventDay =
         scannerParams.get("eventDay") || "";
 
-      console.log("Scanned Volunteer ID:", volunteerId);
-      console.log("Event Day:", eventDay);
-
-      // ----------------------------------------------------------
-      // PRIMARY:
-      // Send result to the check-in page that opened scanner
-      // ----------------------------------------------------------
-
-      if (window.opener && !window.opener.closed) {
-
-        window.opener.postMessage(
-          {
-            type: "hyroxVolunteerScan",
-            volunteerId: volunteerId,
-            eventDay: eventDay
-          },
-          "https://script.google.com"
-        );
-
-        console.log("Volunteer ID + Event Day sent to check-in window.");
-
-        setTimeout(function() {
-          window.close();
-        }, 300);
-
-        return;
-      }
-
-      // ----------------------------------------------------------
-      // FALLBACK:
-      // Redirect using returnUrl
-      // ----------------------------------------------------------
-
       const returnUrl =
         scannerParams.get("returnUrl");
 
-      if (returnUrl) {
+      const sessionToken =
+        scannerParams.get("sessionToken");
 
-        const url = new URL(returnUrl);
+      console.log("Scanned Volunteer ID:", volunteerId);
+      console.log("Event Day:", eventDay);
 
-        url.searchParams.set("volunteerId", volunteerId);
+      if (!returnUrl || !sessionToken) {
 
-        if (eventDay) {
-          url.searchParams.set("eventDay", eventDay);
-        }
+        setStatus(
+          "This scanner was opened incorrectly. Return to the HYROX check-in page and use its Scan QR button.",
+          "error"
+        );
 
-        window.location.href = url.toString();
-
+        scanAccepted = false;
         return;
       }
 
-      // ----------------------------------------------------------
-      // No return mechanism
-      // ----------------------------------------------------------
+      const relayUrl =
+        returnUrl +
+        (returnUrl.includes("?") ? "&" : "?") +
+        "action=recordScan" +
+        "&sessionToken=" + encodeURIComponent(sessionToken) +
+        "&volunteerId=" + encodeURIComponent(volunteerId) +
+        "&eventDay=" + encodeURIComponent(eventDay);
 
-      setStatus(
-        "Scanner was not opened from the check-in screen.",
-        "error"
-      );
+      setStatus("QR code detected. Sending to your check-in screen...", "success");
 
-      scanAccepted = false;
+      // no-cors: we don't need to read the response, only trigger it —
+      // Apps Script doesn't need to send CORS headers back for the
+      // request itself to be received and processed server-side.
+      fetch(relayUrl, { method: "GET", mode: "no-cors" })
+        .then(function() {
+
+          setStatus(
+            "Sent to your check-in screen. You can close this window.",
+            "success"
+          );
+
+          window.setTimeout(function() {
+            window.close();
+          }, 800);
+
+        })
+        .catch(function(error) {
+
+          console.error("Failed to relay scan to check-in app", error);
+
+          setStatus(
+            "Scanned, but couldn't reach the check-in app. Check your connection and try again.",
+            "error"
+          );
+
+          scanAccepted = false;
+
+        });
+
     }
 
 
@@ -856,13 +853,10 @@ function transmitVolunteerToken(rawId) {
     // TESTING
     // ============================================================
     //
-    // Example:
+    // Example (needs a real returnUrl + sessionToken to actually
+    // relay anywhere — this only simulates the "scanned" step):
     //
-    // ?id=HYXMUM260001
-    //
-    // Example with event day:
-    //
-    // ?id=HYXMUM260001&eventDay=18%20September
+    // ?id=HYXMUM260001&returnUrl=...&sessionToken=...&eventDay=18%20September
     //
     // ============================================================
 
