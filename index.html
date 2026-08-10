@@ -1,114 +1,217 @@
 <!doctype html>
+
 <html lang="en">
 
 <head>
+
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>HYROX QR Scanner</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
 
-  <!-- jsQR fallback decoder -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <title>
+    HYROX QR Scanner
+  </title>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+  ></script>
+
 
   <style>
+
     * {
       box-sizing: border-box;
     }
 
+
     body {
+
       margin: 0;
+
       background: #f5f5f5;
+
       color: #111;
-      font-family: Arial, sans-serif;
+
+      font-family:
+        Arial,
+        sans-serif;
+
     }
+
 
     main {
+
       max-width: 480px;
+
       margin: 0 auto;
+
       padding: 24px 18px;
+
     }
+
 
     .card {
+
       background: #fff;
+
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+
+      box-shadow:
+        0 2px 8px
+        rgba(0,0,0,.08);
+
       padding: 20px;
+
     }
+
 
     h1 {
+
       font-size: 23px;
-      margin: 0 0 10px;
+
+      margin:
+        0 0 10px;
+
     }
+
 
     p {
+
       line-height: 1.45;
+
     }
+
 
     button {
+
       width: 100%;
+
       border: 0;
+
       border-radius: 8px;
+
       padding: 14px;
+
       background: #111;
+
       color: #fff;
+
       cursor: pointer;
+
       font-size: 16px;
+
       font-weight: bold;
+
     }
+
 
     button:disabled {
+
       background: #888;
+
       cursor: not-allowed;
+
     }
+
 
     #reader {
+
       margin-top: 18px;
+
       overflow: hidden;
+
       border-radius: 8px;
+
       background: #000;
+
       display: none;
+
       position: relative;
+
     }
+
 
     video {
+
       width: 100%;
+
       height: auto;
+
       display: block;
+
       background: #000;
+
     }
+
 
     #status {
+
       min-height: 24px;
-      margin: 14px 0 0;
+
+      margin-top: 14px;
+
       font-weight: bold;
+
     }
+
 
     .error {
+
       color: #b42318;
+
     }
+
 
     .success {
+
       color: #18753a;
+
     }
+
 
     .scan-region-highlight {
+
       position: absolute;
+
       left: 50%;
+
       top: 50%;
-      transform: translate(-50%, -50%);
+
+      transform:
+        translate(-50%, -50%);
+
       width: 220px;
+
       height: 220px;
-      border: 4px solid #1c8c3a;
+
+      border:
+        4px solid #1c8c3a;
+
       border-radius: 12px;
-      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.5);
+
+      box-shadow:
+        0 0 0 2000px
+        rgba(0,0,0,.5);
+
       pointer-events: none;
+
     }
 
+
     #scanCanvas {
+
       display: none;
+
     }
+
   </style>
+
 </head>
+
 
 <body>
 
@@ -116,13 +219,16 @@
 
     <div class="card">
 
-      <h1>HYROX Volunteer QR Scan</h1>
+      <h1>
+        HYROX Volunteer QR Scan
+      </h1>
+
 
       <p>
-        Point the rear camera at the volunteer's QR code.
-        The Volunteer ID will automatically be sent back
-        to the check-in page.
+        Point the rear camera at the
+        volunteer's QR code.
       </p>
+
 
       <button
         id="startButton"
@@ -131,25 +237,33 @@
         Start Camera
       </button>
 
+
       <div id="reader">
 
         <video
           id="webcamPreview"
           autoplay
           playsinline
-          muted>
-        </video>
+          muted
+        ></video>
 
-        <div class="scan-region-highlight"></div>
+
+        <div
+          class="scan-region-highlight"
+        ></div>
 
       </div>
 
-      <canvas id="scanCanvas"></canvas>
+
+      <canvas
+        id="scanCanvas"
+      ></canvas>
+
 
       <div
         id="status"
-        aria-live="polite">
-      </div>
+        aria-live="polite"
+      ></div>
 
     </div>
 
@@ -158,65 +272,100 @@
 
   <script>
 
-    // ============================================================
-    // CONFIGURATION
-    // ============================================================
-
-    const RETURN_URL_STORAGE_KEY =
-      "hyroxCheckInReturnUrl";
-
-    const CHECKIN_URL =
-      "https://script.google.com/macros/s/AKfycbxPtX-lbjUGHdxMpBu5LoGN1nlAgdXedBdYxyyIGtdZ8OMxwi4rLd_IMmqUd7V369o/exec";
-
-    const EVENT_DAY_STORAGE_KEY =
-      "hyroxCheckInEventDay";
-
 
     // ============================================================
-    // DOM ELEMENTS
+    // DOM
     // ============================================================
 
     const statusElement =
-      document.getElementById("status");
+      document.getElementById(
+        "status"
+      );
+
 
     const startButton =
-      document.getElementById("startButton");
+      document.getElementById(
+        "startButton"
+      );
+
 
     const readerElement =
-      document.getElementById("reader");
+      document.getElementById(
+        "reader"
+      );
+
 
     const videoElement =
-      document.getElementById("webcamPreview");
+      document.getElementById(
+        "webcamPreview"
+      );
+
 
     const canvasElement =
-      document.getElementById("scanCanvas");
+      document.getElementById(
+        "scanCanvas"
+      );
+
 
     const canvasContext =
-      canvasElement.getContext("2d", {
-        willReadFrequently: true
-      });
+      canvasElement.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
 
 
     // ============================================================
     // STATE
     // ============================================================
 
-    let activeStream = null;
+    let activeStream =
+      null;
 
-    let scanInterval = null;
 
-    let scanAccepted = false;
+    let scanInterval =
+      null;
 
-    let nativeDetector = null;
 
-    let RETURN_URL = "";
+    let scanAccepted =
+      false;
+
+
+    let nativeDetector =
+      null;
+
+
+    // ============================================================
+    // EVENT DAY
+    // ============================================================
+
+    const scannerParams =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    const selectedEventDay =
+      scannerParams.get(
+        "eventDay"
+      ) || "";
+
+
+    console.log(
+      "Scanner event day:",
+      selectedEventDay
+    );
 
 
     // ============================================================
     // STATUS
     // ============================================================
 
-    function setStatus(message, type) {
+    function setStatus(
+      message,
+      type
+    ) {
 
       statusElement.textContent =
         message;
@@ -225,181 +374,6 @@
         type || "";
 
     }
-
-
-    // ============================================================
-    // RETURN URL
-    // ============================================================
-
-    function getReturnUrl() {
-
-      const params =
-        new URLSearchParams(
-          window.location.search
-        );
-
-
-      // ----------------------------------------------------------
-      // 1. RETURN URL FROM CURRENT URL
-      // ----------------------------------------------------------
-
-      const urlReturn =
-        params.get("returnUrl");
-
-
-      if (urlReturn) {
-
-        try {
-
-          localStorage.setItem(
-            RETURN_URL_STORAGE_KEY,
-            urlReturn
-          );
-
-          return urlReturn;
-
-        } catch (error) {
-
-          console.warn(
-            "Could not save return URL:",
-            error
-          );
-
-          return urlReturn;
-        }
-      }
-
-
-      // ----------------------------------------------------------
-      // 2. RETURN URL FROM LOCAL STORAGE
-      // ----------------------------------------------------------
-
-      try {
-
-        const storedReturnUrl =
-          localStorage.getItem(
-            RETURN_URL_STORAGE_KEY
-          );
-
-        if (storedReturnUrl) {
-
-          return storedReturnUrl;
-
-        }
-
-      } catch (error) {
-
-        console.warn(
-          "localStorage unavailable:",
-          error
-        );
-
-      }
-
-
-      // ----------------------------------------------------------
-      // 3. HARD FALLBACK
-      // ----------------------------------------------------------
-
-      return CHECKIN_URL;
-    }
-
-
-    // ============================================================
-    // EVENT DAY
-    // ============================================================
-
-    function getEventDay() {
-
-      const params =
-        new URLSearchParams(
-          window.location.search
-        );
-
-
-      // ----------------------------------------------------------
-      // 1. EVENT DAY FROM CURRENT URL
-      // ----------------------------------------------------------
-
-      const urlEventDay =
-        params.get("eventDay");
-
-
-      if (urlEventDay) {
-
-        try {
-
-          localStorage.setItem(
-            EVENT_DAY_STORAGE_KEY,
-            urlEventDay
-          );
-
-        } catch (error) {
-
-          console.warn(
-            "Could not save event day:",
-            error
-          );
-
-        }
-
-        return urlEventDay;
-      }
-
-
-      // ----------------------------------------------------------
-      // 2. EVENT DAY FROM LOCAL STORAGE
-      // ----------------------------------------------------------
-
-      try {
-
-        return (
-          localStorage.getItem(
-            EVENT_DAY_STORAGE_KEY
-          ) || ""
-        );
-
-      } catch (error) {
-
-        return "";
-      }
-
-    }
-
-
-    // ============================================================
-    // CAPTURE RETURN INFORMATION IMMEDIATELY
-    // ============================================================
-
-    /*
-      IMPORTANT:
-
-      We capture the return URL and event day when the scanner
-      page loads.
-
-      The Start Camera button does NOT attempt to discover
-      the check-in page.
-
-      This is important for iPhone Safari / Chrome / Google
-      because the browser may reload or recreate the scanner
-      page while requesting camera permission.
-    */
-
-    RETURN_URL =
-      getReturnUrl();
-
-    getEventDay();
-
-
-    console.log(
-      "HYROX scanner return URL:",
-      RETURN_URL
-    );
-
-    console.log(
-      "HYROX scanner event day:",
-      getEventDay()
-    );
 
 
     // ============================================================
@@ -414,7 +388,9 @@
           scanInterval
         );
 
-        scanInterval = null;
+        scanInterval =
+          null;
+
       }
 
 
@@ -430,12 +406,16 @@
             }
           );
 
-        activeStream = null;
+
+        activeStream =
+          null;
+
       }
 
 
       videoElement.srcObject =
         null;
+
 
       readerElement.style.display =
         "none";
@@ -444,204 +424,126 @@
 
 
     // ============================================================
-    // RETURN TO CHECK-IN PAGE
+    // SEND RESULT TO CHECK-IN PAGE
     // ============================================================
 
-    function returnToCheckIn(
-      volunteerId
+    function transmitVolunteerToken(
+      rawId
     ) {
 
-      const cleanVolunteerId =
+      if (scanAccepted) {
+
+        return;
+
+      }
+
+
+      const volunteerId =
         String(
-          volunteerId || ""
+          rawId || ""
         ).trim();
 
 
-      if (!cleanVolunteerId) {
+      if (!volunteerId) {
 
-        return false;
+        return;
 
       }
 
 
-      /*
-        IMPORTANT:
-
-        Always obtain the return URL through getReturnUrl().
-
-        This means:
-
-        1. Current URL returnUrl is used if available.
-        2. localStorage is used if the browser reloaded.
-        3. CHECKIN_URL is used as the final fallback.
-      */
-
-      const returnUrl =
-        getReturnUrl();
+      scanAccepted =
+        true;
 
 
-      /*
-        Event day is also recovered from:
-
-        1. Current scanner URL
-        2. localStorage
-      */
-
-      const eventDay =
-        getEventDay();
+      shutDownVideoHardware();
 
 
-      console.log(
-        "Preparing return to check-in:",
-        {
-          returnUrl:
-            returnUrl,
-
-          eventDay:
-            eventDay,
-
-          volunteerId:
-            cleanVolunteerId
-        }
+      setStatus(
+        "QR Code detected! Returning to check-in...",
+        "success"
       );
 
 
-      try {
+      /*
+        The scanner was opened by the
+        Apps Script check-in page.
 
-        const destinationUrl =
-          new URL(
-            returnUrl
-          );
+        Send the ID directly back to that
+        page.
 
+        NO REDIRECT.
+        NO NEW CHECK-IN PAGE.
+      */
 
-        destinationUrl.searchParams.set(
-          "volunteerId",
-          cleanVolunteerId
+      if (
+        window.opener &&
+        !window.opener.closed
+      ) {
+
+        window.opener.postMessage(
+
+          {
+
+            type:
+              "hyroxVolunteerScan",
+
+            volunteerId:
+              volunteerId,
+
+            eventDay:
+              selectedEventDay
+
+          },
+
+          "*"
+
         );
-
-
-        if (eventDay) {
-
-          destinationUrl.searchParams.set(
-            "eventDay",
-            eventDay
-          );
-
-        }
-
-
-        const destination =
-          destinationUrl.toString();
 
 
         console.log(
-          "Returning to check-in:",
-          destination
+          "Sent QR result to check-in page:",
+          {
+            volunteerId:
+              volunteerId,
+
+            eventDay:
+              selectedEventDay
+          }
         );
 
 
-        /*
-          window.location.replace() is intentional.
+        setTimeout(
+          function() {
 
-          We do NOT use:
+            window.close();
 
-          window.opener
-          postMessage
-          window.close()
-
-          because those mechanisms are unreliable on iPhone.
-        */
-
-        window.location.replace(
-          destination
+          },
+          500
         );
 
 
-        return true;
+        return;
 
-      } catch (error) {
-
-        console.error(
-          "Could not create check-in URL:",
-          error
-        );
-
-
-        setStatus(
-          "Unable to create the check-in page address.",
-          "error"
-        );
-
-
-        scanAccepted =
-          false;
-
-
-        return false;
       }
 
+
+      /*
+        If there is no opener, this scanner
+        was opened directly.
+
+        Do NOT attempt to redirect.
+      */
+
+      setStatus(
+        "Please open the scanner from the HYROX check-in screen.",
+        "error"
+      );
+
+
+      scanAccepted =
+        false;
+
     }
-
-
-    // ============================================================
-    // QR CODE FOUND
-    // ============================================================
-
-  function transmitVolunteerToken(rawId) {
-
-  if (scanAccepted) {
-    return;
-  }
-
-  const volunteerId =
-    String(rawId || "").trim();
-
-  if (!volunteerId) {
-    return;
-  }
-
-  scanAccepted = true;
-
-  shutDownVideoHardware();
-
-  setStatus(
-    "QR Code detected! Returning to check-in...",
-    "success"
-  );
-
-  console.log("QR RESULT:", {
-    volunteerId: volunteerId,
-    returnUrl: getReturnUrl(),
-    eventDay: getEventDay()
-  });
-
-  /*
-    IMPORTANT:
-
-    Do NOT read returnUrl directly from
-    window.location.search here.
-
-    On iPhone the scanner page can reload.
-    getReturnUrl() already handles:
-
-    1. Current URL
-    2. localStorage
-    3. Check-in URL fallback
-  */
-
-  const success =
-    returnToCheckIn(volunteerId);
-
-  if (!success) {
-
-    scanAccepted = false;
-
-    setStatus(
-      "Unable to find the check-in page. Please reopen the scanner from the check-in page.",
-      "error"
-    );
-  }
-}
 
 
     // ============================================================
@@ -652,20 +554,12 @@
       "click",
       async function() {
 
-        /*
-          IMPORTANT:
-
-          DO NOT check RETURN_URL here.
-
-          iPhone Safari / Chrome / Google app may reload
-          or recreate the page during camera permission.
-
-          The return information was captured when the page
-          loaded and is stored in localStorage.
-        */
-
         startButton.disabled =
           true;
+
+
+        scanAccepted =
+          false;
 
 
         setStatus(
@@ -674,52 +568,38 @@
         );
 
 
-        scanAccepted =
-          false;
-
-
         shutDownVideoHardware();
-
-
-        const constraints = {
-
-          video: {
-
-            facingMode: {
-
-              ideal:
-                "environment"
-
-            },
-
-            width: {
-
-              ideal:
-                1280
-
-            },
-
-            height: {
-
-              ideal:
-                720
-
-            }
-
-          },
-
-          audio:
-            false
-
-        };
 
 
         try {
 
           activeStream =
-            await navigator.mediaDevices.getUserMedia(
-              constraints
-            );
+            await navigator.mediaDevices
+              .getUserMedia({
+
+                video: {
+
+                  facingMode: {
+                    ideal:
+                      "environment"
+                  },
+
+                  width: {
+                    ideal:
+                      1280
+                  },
+
+                  height: {
+                    ideal:
+                      720
+                  }
+
+                },
+
+                audio:
+                  false
+
+              });
 
 
           videoElement.srcObject =
@@ -730,82 +610,36 @@
             "block";
 
 
+          await videoElement.play();
+
+
           setStatus(
-            "Rear camera running. Center the QR code inside the green box.",
+            "Camera running. Center the QR code inside the green box.",
             "success"
           );
-
-
-          await videoElement.play();
 
 
           initializeQrDecoder();
 
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
           console.error(
-            "Rear camera failed:",
+            "Camera error:",
             error
           );
 
 
-          // ------------------------------------------------------
-          // FALLBACK CAMERA REQUEST
-          // ------------------------------------------------------
-
-          try {
-
-            activeStream =
-              await navigator.mediaDevices.getUserMedia({
-
-                video:
-                  true,
-
-                audio:
-                  false
-
-              });
+          startButton.disabled =
+            false;
 
 
-            videoElement.srcObject =
-              activeStream;
-
-
-            readerElement.style.display =
-              "block";
-
-
-            setStatus(
-              "Camera online. Center the QR code inside the green box.",
-              "success"
-            );
-
-
-            await videoElement.play();
-
-
-            initializeQrDecoder();
-
-
-          } catch (fatal) {
-
-            console.error(
-              "Camera initialization failed:",
-              fatal
-            );
-
-
-            startButton.disabled =
-              false;
-
-
-            setStatus(
-              "Camera access failed. Please allow camera access in your browser settings and try again.",
-              "error"
-            );
-
-          }
+          setStatus(
+            "Camera access failed. Please allow camera access and try again.",
+            "error"
+          );
 
         }
 
@@ -814,7 +648,7 @@
 
 
     // ============================================================
-    // INITIALIZE QR DECODER
+    // QR DECODER
     // ============================================================
 
     function initializeQrDecoder() {
@@ -823,31 +657,29 @@
         null;
 
 
-      // ----------------------------------------------------------
-      // Browser native BarcodeDetector
-      // ----------------------------------------------------------
-
       if (
-        "BarcodeDetector" in window
+        "BarcodeDetector"
+        in window
       ) {
 
         try {
 
           nativeDetector =
-            new window.BarcodeDetector({
+            new BarcodeDetector({
 
               formats:
                 ["qr_code"]
 
             });
 
-        } catch (error) {
+        }
+
+        catch (error) {
 
           console.warn(
             "BarcodeDetector unavailable.",
             error
           );
-
 
           nativeDetector =
             null;
@@ -881,7 +713,9 @@
         setInterval(
           async function() {
 
-            if (scanAccepted) {
+            if (
+              scanAccepted
+            ) {
 
               return;
 
@@ -899,41 +733,39 @@
 
 
             // ----------------------------------------------------
-            // NATIVE BARCODE DETECTOR
+            // NATIVE DETECTOR
             // ----------------------------------------------------
 
-            if (nativeDetector) {
+            if (
+              nativeDetector
+            ) {
 
               try {
 
                 const barcodes =
-                  await nativeDetector.detect(
-                    videoElement
-                  );
+                  await nativeDetector
+                    .detect(
+                      videoElement
+                    );
 
 
                 if (
                   barcodes &&
-                  barcodes.length > 0
+                  barcodes.length
                 ) {
 
-                  const rawValue =
-                    barcodes[0].rawValue;
+                  transmitVolunteerToken(
+                    barcodes[0].rawValue
+                  );
 
 
-                  if (rawValue) {
-
-                    transmitVolunteerToken(
-                      rawValue
-                    );
-
-                    return;
-
-                  }
+                  return;
 
                 }
 
-              } catch (error) {
+              }
+
+              catch (error) {
 
                 console.warn(
                   "Native QR detection failed.",
@@ -958,7 +790,9 @@
 
                 scanWithJsQr();
 
-              } catch (error) {
+              }
+
+              catch (error) {
 
                 console.warn(
                   "jsQR scanning failed.",
@@ -977,7 +811,7 @@
 
 
     // ============================================================
-    // jsQR DECODER
+    // jsQR
     // ============================================================
 
     function scanWithJsQr() {
@@ -1009,32 +843,50 @@
 
 
       canvasContext.drawImage(
+
         videoElement,
+
         0,
+
         0,
+
         width,
+
         height
+
       );
 
 
       const imageData =
         canvasContext.getImageData(
+
           0,
+
           0,
+
           width,
+
           height
+
         );
 
 
       const code =
         jsQR(
+
           imageData.data,
+
           imageData.width,
+
           imageData.height,
+
           {
+
             inversionAttempts:
               "attemptBoth"
+
           }
+
         );
 
 
@@ -1053,59 +905,14 @@
 
 
     // ============================================================
-    // TESTING
-    // ============================================================
-
-    /*
-      You can test without a camera using:
-
-      https://chaitalionthego.github.io/hyrox-qr-scanner/?id=HYXMUM260001
-    */
-
-    const testParams =
-      new URLSearchParams(
-        window.location.search
-      );
-
-
-    if (
-      testParams.has("id")
-    ) {
-
-      const testVolunteerId =
-        testParams.get("id");
-
-
-      if (testVolunteerId) {
-
-        window.setTimeout(
-          function() {
-
-            transmitVolunteerToken(
-              testVolunteerId
-            );
-
-          },
-          500
-        );
-
-      }
-
-    }
-
-
-    // ============================================================
     // CLEANUP
     // ============================================================
 
     window.addEventListener(
       "beforeunload",
-      function() {
-
-        shutDownVideoHardware();
-
-      }
+      shutDownVideoHardware
     );
+
 
   </script>
 
